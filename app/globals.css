@@ -255,6 +255,12 @@ a { color: inherit; text-decoration: none; }
 
 .hero-content { text-align: center; padding: 40px 32px; }
 
+.hero-logo {
+  margin: 0 auto 16px;
+  display: block;
+  border-radius: 8px;
+}
+
 .hero-title {
   font-size: 32px;
   font-weight: 700;

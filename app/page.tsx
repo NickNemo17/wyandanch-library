@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { TerminalWindow } from '@/components/TerminalWindow';
 import { ScanLine } from '@/components/ScanLine';
 import { BlinkingCursor } from '@/components/BlinkingCursor';
@@ -18,6 +19,13 @@ export default function Home() {
             <ScanLine />
             <div className="hero-content">
               <div className="hero-fade hero-fade-1">
+                <Image
+                  src="/logo.png"
+                  alt="Wyandanch"
+                  width={80}
+                  height={80}
+                  className="hero-logo"
+                />
                 <h1 className="hero-title">Wyandanch Library</h1>
                 <p className="hero-subtitle">Open Source Finance Education</p>
               </div>
