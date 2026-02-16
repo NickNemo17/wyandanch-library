@@ -1,0 +1,21 @@
+## Overview
+
+Differential machine learning combines automatic differentiation with neural networks to price and hedge derivative instruments. The core idea: instead of training a neural network solely to predict prices, you also train it to predict the sensitivities (Greeks) of those prices to their inputs. This "differential regularization" dramatically improves accuracy and produces hedging strategies directly from the trained model.
+
+Introduced by Huge and Savine, this approach represents a paradigm shift in computational finance — replacing Monte Carlo simulation with neural network approximation while preserving the analytical rigor of risk sensitivities.
+
+## Why This Matters
+
+Traditional derivative pricing relies on Monte Carlo simulation, which is computationally expensive and slow to produce Greeks. Differential ML offers orders-of-magnitude speedup while maintaining accuracy, making it feasible to price and hedge complex portfolios in real time. This is the frontier of quantitative finance computation.
+
+## Key Takeaways
+
+- Automatic differentiation (AD) computes exact derivatives of any computation, not finite-difference approximations
+- Training neural networks with differential labels (price + Greeks) produces far more accurate models
+- The technique generalizes to any derivative that can be simulated, regardless of complexity
+- Speed improvements of 1000x over Monte Carlo are achievable for production pricing
+- Hedging strategies emerge directly from the trained model's sensitivities
+
+---
+
+*Full study notes and detailed summaries are being developed. Check back soon.*

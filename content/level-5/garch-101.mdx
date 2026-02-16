@@ -1,0 +1,21 @@
+## Overview
+
+GARCH 101 introduces the family of Generalized Autoregressive Conditional Heteroskedasticity models, which are among the most important tools in financial econometrics for modeling and forecasting volatility. The module begins with the observation that financial returns exhibit volatility clustering -- periods of high volatility tend to be followed by more high volatility, and calm periods by more calm -- a stylized fact that standard models with constant variance cannot capture. Robert Engle's original ARCH model (1982) and Tim Bollerslev's generalization to GARCH (1986) provide a framework for modeling this time-varying volatility.
+
+The curriculum covers the specification and estimation of ARCH and GARCH models, extensions including EGARCH (which captures the leverage effect, where negative returns tend to increase volatility more than positive returns of the same magnitude), GJR-GARCH, and multivariate GARCH models for covariance estimation. Practical applications include volatility forecasting for risk management, options pricing with stochastic volatility inputs, and the construction of volatility-targeting strategies. The module emphasizes both the mathematical structure of the models and the practical challenges of estimation, model selection, and out-of-sample performance evaluation.
+
+## Why This Matters
+
+Volatility is the central quantity in risk management, derivative pricing, and portfolio construction. Any practitioner who models risk, prices options, or builds strategies that depend on volatility forecasts needs to understand GARCH models and their extensions. These models remain the workhorse of applied volatility modeling in both academia and industry, and understanding their strengths and limitations is essential for credible quantitative work.
+
+## Key Takeaways
+
+- Volatility clustering is a universal feature of financial returns: large moves tend to follow large moves, and small moves follow small moves.
+- GARCH models capture this clustering by making conditional variance a function of past squared returns and past conditional variances.
+- The leverage effect (asymmetric response to positive vs. negative shocks) is captured by extensions like EGARCH and GJR-GARCH.
+- GARCH volatility forecasts are widely used in Value-at-Risk calculations, options pricing, and volatility-targeting strategies.
+- Model selection (choosing lag orders, testing for asymmetry, evaluating out-of-sample forecast accuracy) is a critical practical skill.
+
+---
+
+*Full study notes and detailed summaries are being developed. Check back soon.*

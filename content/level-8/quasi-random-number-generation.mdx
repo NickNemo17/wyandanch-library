@@ -1,0 +1,21 @@
+## Overview
+
+Quasi-random (low-discrepancy) sequences provide an alternative to pseudo-random numbers for Monte Carlo simulation. Unlike pseudo-random generators, which inevitably leave gaps and clusters in high-dimensional spaces, quasi-random sequences like Sobol and Halton fill the space more uniformly. The result: faster convergence rates for numerical integration — O(1/N) versus O(1/sqrt(N)) — which translates directly into more accurate pricing with fewer simulation paths.
+
+This material covers the construction and properties of low-discrepancy sequences, their application to derivative pricing, and the practical considerations for using quasi-Monte Carlo in production systems.
+
+## Why This Matters
+
+Monte Carlo simulation is ubiquitous in quantitative finance: pricing exotic derivatives, computing CVA/XVA, risk aggregation, and portfolio simulation. Any improvement in convergence rate directly reduces computation time or improves accuracy. Quasi-random methods offer a free lunch — better results from the same computational budget — but require understanding their quirks.
+
+## Key Takeaways
+
+- Sobol sequences are the most widely used low-discrepancy sequence in finance applications
+- Convergence improvement over pseudo-random is most dramatic in moderate dimensions (5-50)
+- Randomized quasi-Monte Carlo (RQMC) combines the benefits of both approaches and allows error estimation
+- Dimension reduction techniques (Brownian bridge, PCA) amplify the benefits of quasi-random methods
+- In very high dimensions (>100), the advantage of quasi-random over pseudo-random diminishes
+
+---
+
+*Full study notes and detailed summaries are being developed. Check back soon.*

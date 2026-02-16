@@ -1,0 +1,21 @@
+## Overview
+
+Stochastic volatility models extend the Black-Scholes framework by treating volatility itself as a random process. The Black-Scholes model assumes constant volatility, but empirical evidence overwhelmingly shows that volatility changes over time, exhibits clustering, and is correlated with the underlying asset price. Models like Heston (1993) and SABR address these shortcomings.
+
+This material covers the mathematical foundations of stochastic vol models, their calibration to market data, and the practical challenges of using them for pricing and hedging exotic derivatives. Understanding these models is essential for anyone working with options beyond vanilla calls and puts.
+
+## Why This Matters
+
+The volatility smile and skew are market realities that constant-vol models cannot explain. Stochastic volatility models provide a principled framework for pricing and hedging in the presence of non-constant vol — which is to say, in all real markets. They are the backbone of modern derivatives pricing at every major bank and fund.
+
+## Key Takeaways
+
+- The Heston model captures mean-reverting stochastic volatility with correlation to the underlying
+- SABR is the market standard for interest rate and FX options, providing an intuitive parameterization of the smile
+- Calibration is the central practical challenge — fitting model parameters to observed market prices
+- The vol-of-vol parameter controls the curvature of the smile; the correlation parameter controls its skew
+- Hedging under stochastic vol requires additional hedge instruments beyond delta (vega, volga, vanna)
+
+---
+
+*Full study notes and detailed summaries are being developed. Check back soon.*
