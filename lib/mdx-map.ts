@@ -10,6 +10,7 @@ const mdxMap: Record<string, () => Promise<MDXModule>> = {
   'fisher-common-stocks': () => import('@/content/level-2/fisher-common-stocks.mdx'),
   'marks-oaktree-memos': () => import('@/content/level-2/marks-oaktree-memos.mdx'),
   'livermore-reminiscences': () => import('@/content/level-2/livermore-reminiscences.mdx'),
+  'druckenmiller-principles': () => import('@/content/level-2/druckenmiller-principles.mdx'),
   'keynes-general-theory': () => import('@/content/level-3/keynes-general-theory.mdx'),
   'hayek-prices-and-production': () => import('@/content/level-3/hayek-prices-and-production.mdx'),
   'damodaran-little-book-valuation': () => import('@/content/level-4/damodaran-little-book-valuation.mdx'),

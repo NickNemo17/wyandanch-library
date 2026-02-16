@@ -181,6 +181,17 @@ export const allItems: CurriculumItem[] = [
       'The thinly veiled biography of Jesse Livermore. Timeless lessons on speculation, crowd psychology, and the art of tape reading.',
     keyConcepts: ['Speculation psychology', 'Tape reading', 'Position sizing', 'Market timing', 'Crowd behavior'],
   },
+  {
+    slug: 'druckenmiller-principles',
+    title: 'Druckenmiller: Principles from Practice',
+    author: 'Stanley Druckenmiller (via Schwager, interviews)',
+    level: 2,
+    tracks: ['fundamental', 'macro', 'practitioner'],
+    topics: ['the-canon', 'markets-and-execution'],
+    description:
+      'The greatest macro trader of his generation never wrote a book. Synthesized from three decades of interviews, conference talks, and Schwager\'s New Market Wizards: concentration, liquidity, fat pitches, and radical flexibility.',
+    keyConcepts: ['Concentration over diversification', 'Liquidity as primary driver', 'Fat pitch sizing', 'Top-down macro framework', 'Intellectual flexibility'],
+  },
   // Level 3 — Macro & Monetary Theory
   {
     slug: 'keynes-general-theory',
@@ -397,7 +408,7 @@ export const levels: Level[] = [
   {
     number: 2,
     title: 'Investing Philosophy',
-    description: 'The wisdom of Buffett, Fisher, Marks, and Livermore',
+    description: 'The wisdom of Buffett, Fisher, Marks, Livermore, and Druckenmiller',
     items: allItems.filter((i) => i.level === 2),
   },
   {
