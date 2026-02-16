@@ -1,21 +1,110 @@
 ## Overview
 
-Gappy Lecture 1 focuses on alpha research -- the systematic process of generating, testing, and refining trading signals that predict future asset returns. Alpha research is the core intellectual activity of quantitative investment management: identifying patterns in data that represent genuine, exploitable inefficiencies rather than statistical noise. This lecture covers the full alpha research pipeline, from initial hypothesis generation through signal construction, statistical testing, and evaluation of economic significance.
+Alpha research is the systematic process of generating, testing, and refining trading signals that predict future asset returns. In the language of quantitative finance, alpha is the return that cannot be explained by exposure to known systematic risk factors -- it is the residual, the edge, the component of performance that reflects genuine skill or insight rather than compensation for bearing common risks. Finding alpha is the core intellectual activity of quantitative investment management, and doing it honestly -- without fooling yourself with data-mined noise -- is the hardest part of the job.
 
-Central concepts include the information coefficient (IC) -- the correlation between a signal's predictions and subsequent realized returns -- and the fundamental law of active management, which relates a strategy's information ratio to the breadth of independent bets and the skill (IC) of the forecasts. The lecture also addresses the critical challenge of multiple testing: when researchers test many signals on the same data, some will appear significant by chance alone. Proper correction for multiple comparisons, out-of-sample validation, and economic reasoning are essential safeguards against false discoveries.
+This lecture covers the full alpha research pipeline: defining what alpha actually is, constructing and measuring signals using the information coefficient, understanding the fundamental law of active management, building signals from raw data using cross-sectional transforms, testing signals with proper statistical rigor (including corrections for multiple testing), and confronting the uncomfortable realities of signal decay, data snooping, and the replication crisis in academic finance. The goal is to develop the judgment to distinguish a genuine predictive signal from a statistical mirage.
+
+## What Alpha Actually Is
+
+Alpha is the return unexplained by systematic risk factors. In a factor model framework:
+
+r_i = alpha_i + beta_1 * F_1 + beta_2 * F_2 + ... + beta_k * F_k + epsilon_i
+
+The betas capture exposure to known factors (market, value, momentum, etc.), and alpha_i is what remains. If alpha is positive and statistically significant, the portfolio generates returns beyond what its factor exposures would predict -- this is the value added by skill.
+
+Crucially, alpha is defined relative to a factor model. A strategy that loads heavily on the value factor will show positive alpha relative to CAPM (which only includes market beta) but zero alpha relative to a model that includes a value factor. This means the question "does this strategy have alpha?" is always "does this strategy have alpha after controlling for factors X, Y, and Z?" The choice of factors is itself a judgment call, and it matters enormously.
+
+The practical implication: before claiming alpha, a researcher must demonstrate that the returns are not explained by known, investable factor exposures. Otherwise, the "alpha" is just repackaged beta that can be obtained more cheaply through passive factor indices.
+
+## The Information Coefficient
+
+The Information Coefficient (IC) is the correlation between a signal's predictions and subsequent realized returns:
+
+`IC = corr(signal_t, return_{t+1})`
+
+An IC of 1.0 means perfect foresight. An IC of 0.0 means no predictive power. In practice, ICs for good alpha signals are small -- typically 0.02 to 0.10. This might seem useless, but it is not, because the power of a signal depends on both its accuracy and its breadth.
+
+The IC is typically measured as a rank correlation (Spearman) rather than a Pearson correlation, because rank correlation is more robust to outliers and does not assume a linear relationship between signal and return. You compute the IC at each point in time (cross-sectional correlation between signal values and subsequent returns across all securities in the universe), then average over time. The mean IC is your point estimate of predictive skill; the t-statistic of the mean IC (mean IC divided by its standard error) tells you whether the skill is statistically distinguishable from zero.
+
+**IC Information Ratio (ICIR).** The ICIR is the mean IC divided by the standard deviation of IC over time: ICIR = mean(IC) / std(IC). An ICIR above 0.5 is generally considered strong. The ICIR captures not just the average skill but the consistency of that skill -- a signal with mean IC of 0.05 and very low volatility is more valuable than one with mean IC of 0.08 that fluctuates wildly between positive and negative.
+
+## The Fundamental Law of Active Management
+
+Richard Grinold's Fundamental Law of Active Management connects signal quality to portfolio performance:
+
+IR = IC * sqrt(BR)
+
+Where IR is the Information Ratio (excess return over benchmark divided by tracking error), IC is the Information Coefficient, and BR is breadth -- the number of independent bets per period.
+
+This equation has profound implications. A signal with IC = 0.05 applied to 500 stocks produces IR = 0.05 * sqrt(500) = 1.12, which is excellent. The same IC applied to 10 stocks gives IR = 0.05 * sqrt(10) = 0.16, which is barely noticeable. The law tells you that a mediocre signal applied broadly can outperform a strong signal applied narrowly. This is why quantitative strategies typically operate across large universes -- breadth is the multiplier that turns small edges into significant performance.
+
+**Caveats.** The law assumes independent bets, which is never exactly true. Correlated positions reduce effective breadth. If your 500 stock bets are all driven by the same sector exposure, your effective breadth might be 5, not 500. Properly estimating effective breadth -- accounting for correlation structure -- is essential for realistic performance expectations.
+
+## Signal Construction
+
+Raw data must be transformed into tradeable signals. The standard pipeline involves several steps.
+
+**Cross-Sectional Ranks.** At each point in time, rank all securities by the raw signal value (e.g., earnings yield). Ranking converts the signal to a uniform distribution, eliminating the influence of outliers and making signals comparable across different metrics and time periods. Ranks are typically scaled to [-1, +1] or [0, 1].
+
+**Z-Scores.** An alternative to ranking: standardize the signal to have zero mean and unit variance cross-sectionally. Z-scores preserve more information about the distribution shape but are sensitive to outliers.
+
+**Winsorization.** Clip extreme values to a percentile threshold (e.g., set all values above the 99th percentile equal to the 99th percentile value, and similarly for the 1st percentile). This reduces the influence of outliers without completely discarding distributional information, as ranking does. Winsorization is typically applied before z-scoring.
+
+**Signal Combination.** Multiple signals are often combined into a composite alpha. Common approaches include equal-weighted z-score averaging, regression-based weighting (where the weight on each signal is its marginal contribution to prediction), and machine learning methods. The danger of complex combination methods is overfitting -- the more flexibility you give the combination model, the more likely it is to capture noise rather than signal.
+
+## Signal Testing and Multiple Testing Correction
+
+**T-Statistics.** The basic test of signal significance is whether the mean IC is significantly different from zero. The t-statistic is mean(IC) / (std(IC) / sqrt(T)), where T is the number of time periods. A t-stat above 2.0 gives conventional 5% significance, but in alpha research, this threshold is far too lax.
+
+**The Multiple Testing Problem.** If you test 100 signals at the 5% level, you expect 5 to appear significant by pure chance. At most quant firms, researchers test thousands of signals on the same dataset. Without correction, the "best" signal from this search will almost certainly be a false discovery.
+
+**Bonferroni Correction.** The simplest correction: divide the significance level by the number of tests. If you test N signals and want a family-wise error rate of 5%, require each individual test to pass at the 0.05/N level. Bonferroni is conservative -- it controls the probability of even one false positive, which may be too strict when N is very large.
+
+**Benjamini-Hochberg (BH) Procedure.** Rather than controlling the probability of any false positive, BH controls the False Discovery Rate (FDR) -- the expected proportion of discoveries that are false. Sort the N p-values in ascending order: p_(1), p_(2), ..., p_(N). Find the largest k such that p_(k) ≤ (k/N) * alpha. Reject hypotheses 1 through k. BH is less conservative than Bonferroni and more appropriate when you expect some true signals among many tests.
+
+## Signal Decay and the Half-Life of Alpha
+
+Alpha signals degrade over time. A signal discovered today will be less profitable next year, and possibly worthless in five years. This happens through multiple channels:
+
+**Market Learning.** As more participants discover and trade a signal, prices adjust to reflect the information, and the premium shrinks. Academic publication accelerates this process -- McLean and Pontiff (2016) found that factor premia decay by approximately 32% after publication.
+
+**Crowding.** When too much capital chases the same signal, the trades themselves move prices adversely. Entry becomes more expensive, exits become more costly, and drawdowns deepen as crowded positions unwind simultaneously.
+
+**Regime Change.** A signal that worked in a low-rate, low-volatility environment may fail when the regime shifts. Economic and market structural changes can permanently destroy a signal's efficacy.
+
+The practical consequence: alpha research is not a one-time activity. It requires continuous generation of new signals, monitoring of existing signals for decay, and retirement of signals that have lost their edge. A quant fund that stops doing research is dying -- it just does not know it yet.
+
+## Data Snooping and the Replication Crisis
+
+**Data Snooping Bias.** When the same dataset is used to both generate and test hypotheses, the results are biased upward. Every choice a researcher makes -- which variables to include, which time period to study, which outliers to remove, which subgroups to analyze -- is an implicit test that is not accounted for in the final p-value. The result: published findings are systematically more significant than reality.
+
+**The Replication Crisis in Finance.** Harvey, Liu, and Zhu (2016) documented that most published factors in finance do not replicate. Of over 300 factors published in top journals, the majority fail to deliver significant returns out of sample. They argue that the minimum t-statistic for a new factor should be 3.0, not 2.0, to account for the cumulative data mining across the profession.
+
+Hou, Xue, and Zhang (2020) attempted to replicate 452 published anomalies and found that the majority -- roughly 65% -- could not be replicated with standard methodology. The implications are stark: the academic literature is not a reliable source of tradeable signals. Critical evaluation, independent replication, and economic reasoning are essential filters.
 
 ## Why This Matters
 
-Alpha research is what quantitative funds do. The ability to generate, test, and evaluate predictive signals in a disciplined, statistically rigorous framework is the most valuable skill in systematic investing. Understanding the information coefficient, the fundamental law, and the pitfalls of data mining is essential for any researcher or portfolio manager working in a quantitative framework.
+Alpha research is what quantitative funds do. The ability to generate, test, and evaluate predictive signals in a disciplined, statistically rigorous framework is the most valuable skill in systematic investing. But the field is littered with false discoveries, overfitted models, and backtests that flatter strategies which cannot survive live trading. Understanding the information coefficient, the fundamental law, proper multiple testing correction, and the realities of signal decay and data snooping is what separates the researcher who finds real edges from the one who publishes noise.
 
 ## Key Takeaways
 
-- Alpha signals are systematic forecasts of future returns derived from data -- the quality of these signals determines portfolio performance.
-- The information coefficient (IC) measures predictive skill; even small but consistent ICs can generate significant value when applied across many securities.
-- The fundamental law of active management: IR = IC x sqrt(breadth) -- skill and the number of independent bets jointly determine performance.
-- Multiple testing is the greatest threat to alpha research: testing many hypotheses on the same data will produce spurious "discoveries."
-- Robust alpha research requires out-of-sample testing, economic intuition, and healthy skepticism about backtest results.
+- Alpha is the return unexplained by systematic risk factors -- it is defined relative to a specific factor model, and the choice of model matters.
+- The Information Coefficient (IC) measures predictive skill. Even small ICs (0.02-0.10) are valuable when applied across broad universes.
+- The Fundamental Law of Active Management: IR = IC * sqrt(BR). Breadth is the multiplier -- mediocre skill applied broadly beats strong skill applied narrowly.
+- Signal construction requires careful transformation: ranks, z-scores, and winsorization to control outliers and ensure comparability.
+- Multiple testing is the greatest threat to alpha research. Bonferroni controls family-wise error; Benjamini-Hochberg controls the false discovery rate.
+- Alpha decays after discovery due to market learning, crowding, and regime change. Continuous research is not optional.
+- The replication crisis is real: most published factors do not survive out-of-sample testing. Harvey/Liu/Zhu recommend a minimum t-stat of 3.0 for new factors.
+- Economic reasoning is the ultimate filter. A signal without a plausible economic mechanism should be treated with extreme skepticism, regardless of its statistical significance.
+
+## Further Reading
+
+- [Gappy Lecture 2: Factor Models](/read/gappy-lecture-2-factor-models) -- the factor frameworks that define what "alpha" means
+- [Gappy Lecture 3: Factor Evaluation](/read/gappy-lecture-3-factor-evaluation) -- evaluating whether a factor is real and investable
+- [Systematic Indices](/read/systematic-indices) -- building portfolios from factor signals
+- [From Theory to Application](/read/theory-to-application) -- the full pipeline from research to live trading
+- [Quantitative Foundations](/read/quant-foundations) -- the mathematical prerequisites for signal testing
 
 ---
 
-*Full study notes and detailed summaries are being developed. Check back soon.*
+*This is a living document. Contributions welcome via [GitHub](https://github.com/NickNemo17/wyandanch-library).*

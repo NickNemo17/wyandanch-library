@@ -1,21 +1,105 @@
 ## Overview
 
-This module covers the intersection of econometric methods and foreign exchange markets, two areas that are deeply intertwined in quantitative finance. The econometrics component focuses on time series analysis -- autoregressive models (AR), moving average models (MA), ARIMA, cointegration, and error correction models -- as well as cross-sectional and panel regression techniques commonly used in empirical finance. These tools form the backbone of empirical research in asset pricing, macroeconomic forecasting, and strategy development.
+Econometrics is the discipline of extracting reliable conclusions from noisy financial data. Time series econometrics -- the branch most relevant to markets -- deals with data indexed by time, where observations are typically dependent, non-stationary, and plagued by heteroskedasticity. Mastering these tools is what separates researchers who produce credible empirical results from those who find patterns in noise. This module covers the core econometric techniques and applies them to the foreign exchange market, where macro forces, interest rate differentials, and regime dynamics intersect.
 
-The FX component examines the structure and dynamics of the foreign exchange market, the largest and most liquid financial market in the world. Topics include exchange rate determination (purchasing power parity, interest rate parity, balance of payments models), the carry trade and its risk-return profile, central bank intervention, and the microstructure of FX trading. The combination of rigorous econometric technique with deep domain knowledge of currency markets provides a powerful framework for analyzing macro-driven investment opportunities.
+The FX market is the largest and most liquid financial market in the world, with daily turnover exceeding $7 trillion. It is also the market where macro theory meets trading most directly. Exchange rates are driven by interest rate differentials, capital flows, central bank policy, and risk appetite -- forces that are quantifiable and, to varying degrees, forecastable. Understanding how to model these dynamics with proper econometric technique is essential for any macro-oriented investor or quantitative researcher.
+
+## Time Series Fundamentals
+
+**Stationarity** is the single most important concept in time series econometrics. A stationary process has a constant mean, constant variance, and autocovariance that depends only on the lag, not on time. Most financial prices are non-stationary -- they wander without reverting to a fixed mean. Returns (first differences of log-prices) are typically stationary, which is why we model returns rather than price levels.
+
+Why does stationarity matter? Because regression with non-stationary data produces **spurious results**. Granger and Newbold (1974) showed that regressing one random walk on another produces apparently significant t-statistics even when the series are completely unrelated. The `R²` can be high, the t-stats can look compelling, and every conclusion can be garbage.
+
+**Autocorrelation** measures how a series is correlated with its own past values. The autocorrelation function (ACF) at lag `k` is `ρ(k) = Cov(y_t, y_{t-k}) / Var(y_t)`. Significant autocorrelation in returns implies predictability -- which has direct implications for strategy design. In practice, daily equity returns show minimal autocorrelation, but volatility (squared returns) shows strong persistence, motivating the GARCH models covered separately.
+
+**Unit Root Tests** determine whether a series is stationary. The **Augmented Dickey-Fuller (ADF) test** is the standard. The test regression is:
+
+`Δy_t = α + γ*y_{t-1} + Σ(δ_i * Δy_{t-i}) + ε_t`
+
+The null hypothesis is `γ = 0` (unit root, non-stationary). If you reject the null, the series is stationary. The augmented lags of `Δy_{t-i}` absorb any serial correlation in the residuals. Critical values are non-standard (not normal or t-distributed), which is why you use Dickey-Fuller tables. In practice, price levels almost always fail to reject the unit root null; returns almost always reject it.
+
+## Regression in Finance
+
+**Ordinary Least Squares (OLS)** is the workhorse of empirical finance. The model `y = Xβ + ε` is estimated by minimizing the sum of squared residuals, yielding `β̂ = (XᵀX)⁻¹Xᵀy`. For the estimates to be reliable, the Gauss-Markov assumptions must hold: linearity, exogeneity (`E[ε|X] = 0`), no perfect multicollinearity, and homoskedasticity (`Var(ε|X) = σ²I`).
+
+Financial data routinely violates these assumptions.
+
+**Heteroskedasticity** -- non-constant variance of the error term -- is pervasive. Volatility clustering means the variance of returns changes dramatically over time. OLS coefficient estimates remain unbiased under heteroskedasticity, but the standard errors (and therefore t-statistics and confidence intervals) are wrong. White's heteroskedasticity-consistent standard errors provide a correction.
+
+**Newey-West standard errors** go further, correcting for both heteroskedasticity and autocorrelation (HAC -- Heteroskedasticity and Autocorrelation Consistent). In any time series regression where the residuals may be serially correlated -- which is nearly all of them -- Newey-West standard errors should be the default. The Newey-West estimator uses a truncation lag `L` (commonly `L ≈ T^(1/3)`) and applies kernel weights to autocovariances of the residuals up to that lag. Using naive OLS standard errors in time series finance research is one of the most common and most consequential mistakes in empirical work.
+
+## FX Market Dynamics: Interest Rate Parity
+
+The fundamental theoretical relationship in currency markets is **interest rate parity**.
+
+**Covered Interest Parity (CIP)** states that the forward exchange rate must reflect the interest rate differential between two currencies to prevent arbitrage:
+
+`F/S = (1 + r_d) / (1 + r_f)`
+
+where `F` is the forward rate, `S` is the spot rate, `r_d` is the domestic interest rate, and `r_f` is the foreign interest rate. CIP is a no-arbitrage condition and holds tightly in normal markets (deviations arose during the 2008 crisis and post-2014 due to balance sheet constraints at banks, but these are exceptions that prove the rule).
+
+**Uncovered Interest Parity (UIP)** makes the stronger claim that the expected change in the spot exchange rate equals the interest rate differential:
+
+`E[ΔS/S] = r_d - r_f`
+
+UIP implies that high-interest-rate currencies should depreciate to offset their yield advantage. The empirical reality is the opposite. **Fama (1984)** documented that high-interest-rate currencies tend to appreciate, not depreciate -- the famous **UIP failure** or "forward premium puzzle." This failure is one of the most robust findings in international finance.
+
+**The Carry Trade** directly exploits UIP failure. The strategy is simple: borrow in low-yielding currencies (JPY, CHF historically) and invest in high-yielding currencies (AUD, NZD, BRL, TRY). Returns are persistent and profitable on average -- Sharpe ratios of 0.5-0.8 are typical -- but the distribution has severe negative skew. Carry trades are vulnerable to sudden unwinding during risk-off episodes, producing crash-like losses (the yen carry trade unwinding in August 2024 is a recent example). The returns are compensation for crash risk, not a free lunch.
+
+## Macro Frameworks Quantified
+
+Different schools of macroeconomic thought generate different -- and sometimes opposing -- tradeable hypotheses.
+
+**Classical/Monetarist:** Markets are efficient, prices adjust quickly, and the quantity of money determines the price level. Tradeable signal: money supply growth predicts inflation. When M2 growth accelerates relative to real GDP growth, position for rising inflation expectations (long TIPS breakevens, short duration, long commodities).
+
+**Keynesian:** Aggregate demand drives output in the short run. Fiscal multipliers matter. Tradeable signal: fiscal impulse indicators (change in structural deficit) predict economic acceleration. Large fiscal expansions should be bullish for pro-cyclical assets and bearish for bonds.
+
+**Austrian:** Credit cycles driven by central bank manipulation of interest rates create malinvestment that must eventually unwind. Tradeable signal: credit-to-GDP gaps and yield curve inversions predict recessions and deleveraging. Position defensively when credit growth far exceeds nominal GDP growth.
+
+**MMT (Modern Monetary Theory):** Sovereign currency issuers cannot run out of money; the binding constraint is inflation, not deficits. Tradeable signal: if MMT-influenced policy is enacted, expect larger deficits without immediate bond market punishment, but watch inflation indicators for the real constraint.
+
+The key insight is that no single framework dominates in all regimes. The econometrician's job is to quantify which macro relationships are operative at any given time.
+
+## Regime Detection
+
+Financial relationships are not stable. Correlations shift, volatility regimes change, and the parameters of any model are time-varying. Regime detection formalizes this observation.
+
+**Markov Switching Models** (Hamilton, 1989) assume that the economy transitions between discrete, unobservable states according to a Markov chain. In a two-regime model of stock returns, State 1 might be "bull market" (high mean, low variance) and State 2 "bear market" (low mean, high variance). The model jointly estimates the parameters of each regime and the transition probabilities between them. The output includes filtered probabilities -- the model's real-time estimate of which regime is currently operative.
+
+**Structural Breaks** (Bai-Perron tests) detect specific dates where model parameters shift permanently. Unlike Markov switching, which assumes recurrent regimes, structural break analysis identifies one-time changes -- a regulatory shift, a change in central bank regime, or a market structure transformation.
+
+## Advanced Volatility Models
+
+**DCC-GARCH (Dynamic Conditional Correlation)** extends univariate GARCH to model time-varying correlations between assets. The key insight is that correlations are not constant -- they spike during crises (the "correlation breakdown" where everything sells off together). DCC-GARCH decomposes the conditional covariance matrix into time-varying volatilities (from univariate GARCH) and a time-varying correlation matrix. This is essential for dynamic portfolio construction, where assuming fixed correlations produces portfolios that are far riskier than intended during stress periods.
+
+**HAR (Heterogeneous Autoregressive) model** for realized volatility, introduced by Corsi (2009), captures the multi-scale nature of volatility by regressing realized volatility on lagged daily, weekly, and monthly realized volatility components:
+
+`RV_t = β₀ + β_d * RV_{t-1} + β_w * RV_{t-5,t-1} + β_m * RV_{t-22,t-1} + ε_t`
+
+Despite its simplicity (it is an OLS regression), the HAR model consistently outperforms more complex models in volatility forecasting competitions. The intuition is that different market participants operate at different frequencies -- day traders, weekly rebalancers, and monthly allocators -- and their aggregate behavior produces volatility dynamics with multiple time scales.
 
 ## Why This Matters
 
-Time series econometrics is the primary empirical tool for quantitative researchers working with financial data. Understanding how to properly specify, estimate, and test models on time-indexed data -- while avoiding the pitfalls of spurious regression, non-stationarity, and data mining -- is critical for any credible quantitative research. FX markets, meanwhile, are the transmission mechanism for global macro forces and offer unique opportunities (and risks) that differ fundamentally from equity and fixed income markets.
+Time series econometrics is the primary empirical tool for quantitative researchers working with financial data. Understanding how to properly specify, estimate, and test models on time-indexed data -- while avoiding the pitfalls of spurious regression, non-stationarity, and data mining -- is critical for any credible quantitative research. FX markets, meanwhile, are the transmission mechanism for global macro forces and offer unique opportunities (and risks) that differ fundamentally from equity and fixed income markets. The carry trade's persistent returns and crash dynamics encapsulate the central tension in all of finance: the relationship between risk and return.
 
 ## Key Takeaways
 
-- Time series models (AR, MA, ARIMA, VAR) capture the temporal dynamics of financial data and are essential for forecasting and signal generation.
-- Cointegration and error correction models allow researchers to identify long-run equilibrium relationships between non-stationary series.
-- Non-stationarity, serial correlation, and heteroskedasticity are pervasive in financial data and must be properly handled to avoid spurious results.
-- FX markets are driven by interest rate differentials, capital flows, central bank policy, and risk sentiment -- understanding these drivers is key to currency analysis.
-- The carry trade (borrowing low-yield currencies to invest in high-yield currencies) is one of the most studied strategies in FX and illustrates the tension between persistent returns and tail risk.
+- Stationarity is the prerequisite for valid time series inference -- always test with ADF before running regressions on levels.
+- Newey-West (HAC) standard errors should be the default in any time series regression; naive OLS standard errors are wrong when residuals are heteroskedastic or autocorrelated.
+- Covered interest parity is a no-arbitrage condition that holds tightly; uncovered interest parity fails empirically, and this failure is the foundation of the carry trade.
+- The carry trade earns persistent returns compensating for crash risk -- the return distribution has severe negative skew.
+- Different macro frameworks (Classical, Keynesian, Austrian, MMT) generate different tradeable signals; no single framework dominates in all regimes.
+- Markov switching models detect recurring regimes (bull/bear); structural break tests detect permanent parameter shifts.
+- DCC-GARCH captures time-varying correlations that spike during crises -- fixed-correlation assumptions are dangerous for portfolio construction.
+- The HAR model's success in volatility forecasting demonstrates that simple, well-motivated models often outperform complex ones.
+
+## Further Reading
+
+- [Quantitative Foundations](/read/quant-foundations) -- the mathematical prerequisites (probability distributions, linear algebra, stochastic processes) that underpin the econometric methods here
+- [GARCH 101](/read/garch-101) -- deep dive into the univariate volatility models that form the building blocks of DCC-GARCH
+- [Hayek: Prices and Production](/read/hayek-prices-and-production) -- the Austrian credit cycle theory referenced in the macro frameworks section
+- [Keynes: The General Theory](/read/keynes-general-theory) -- the demand-side macro framework and its implications for fiscal policy and asset pricing
+- [Factor Models (Gappy Lecture 2)](/read/gappy-lecture-2-factor-models) -- how covariance estimation and regime dynamics connect to systematic factor investing
 
 ---
-
-*Full study notes and detailed summaries are being developed. Check back soon.*
+*This is a living document. Contributions welcome via [GitHub](https://github.com/NickNemo17/wyandanch-library).*

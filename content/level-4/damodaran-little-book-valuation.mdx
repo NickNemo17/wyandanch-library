@@ -1,21 +1,148 @@
 ## Overview
 
-Aswath Damodaran's *The Little Book of Valuation* distills the essential principles of business valuation into an accessible, practitioner-oriented guide. Damodaran, a professor at NYU Stern and widely regarded as the leading authority on valuation, covers the two fundamental approaches to determining what a business is worth: intrinsic valuation (estimating value based on a company's expected future cash flows, discounted to the present) and relative valuation (pricing a company by comparing it to similar companies using multiples like P/E, EV/EBITDA, and price-to-book).
+Aswath Damodaran's *The Little Book of Valuation* (2011) distills the essential principles of business valuation into a practitioner-oriented guide that every investor should internalize. Damodaran, a professor at NYU Stern and widely regarded as the foremost authority on valuation, covers the two fundamental approaches to determining what a business is worth: **intrinsic valuation** (estimating value based on expected future cash flows, discounted to the present) and **relative valuation** (pricing a company by comparing it to similar companies using multiples). The book is a masterclass in making the complex accessible without sacrificing rigor.
 
-The book walks through the mechanics of building a discounted cash flow (DCF) model -- estimating growth rates, determining the cost of capital, projecting free cash flows, and calculating terminal value -- while also addressing the practical challenges that make valuation as much art as science: dealing with uncertainty, adjusting for different business types (financial services firms, cyclical companies, young growth companies), and understanding the biases that creep into every valuation. Damodaran emphasizes that valuation is not about precision but about building a framework for making better investment decisions under uncertainty.
+The genius of Damodaran's approach is his insistence that valuation is not about mathematical precision -- it is about building a structured framework for making better decisions under uncertainty. Every DCF model requires assumptions about growth, risk, and cash flows that no one can predict with certainty. Every multiple comparison requires judgment about which companies are truly comparable and whether the market is pricing them correctly. Damodaran teaches you to embrace this uncertainty rather than hide from it, and to understand that the goal of valuation is not to arrive at a single number but to build a range of plausible values and identify the key drivers that determine where in that range the truth is most likely to fall.
+
+## Intrinsic Valuation: The DCF Framework
+
+At its core, intrinsic valuation rests on a simple principle: **the value of any asset is the present value of its expected future cash flows**. A business is worth what it will generate for its owners over its lifetime, discounted back to today at a rate that reflects the risk of those cash flows. Every DCF model, no matter how complex, is an elaboration of this idea.
+
+### Free Cash Flow: FCFE vs. FCFF
+
+The first decision in any DCF is which cash flow to discount. Damodaran distinguishes between two approaches:
+
+**Free Cash Flow to Equity (FCFE)** is the cash available to shareholders after the company has paid its operating expenses, reinvested in the business, and serviced its debt. You discount FCFE at the cost of equity to get the value of the equity directly.
+
+> FCFE = Net Income + Depreciation - Capital Expenditures - Change in Working Capital - Debt Repayments + New Debt Issued
+
+**Free Cash Flow to the Firm (FCFF)** is the cash available to all capital providers -- both debt and equity holders -- before any debt payments. You discount FCFF at the weighted average cost of capital (WACC) to get the enterprise value, then subtract debt to arrive at equity value.
+
+> FCFF = EBIT(1 - Tax Rate) + Depreciation - Capital Expenditures - Change in Working Capital
+
+When to use which? FCFF is generally preferred for companies with changing or complex capital structures because it separates the operating performance of the business from its financing decisions. FCFE works well for financial institutions (banks, insurance companies) where debt is an operating input rather than a financing choice.
+
+### Estimating the Cost of Equity: CAPM and Risk
+
+The **cost of equity** is the return that equity investors require to compensate them for risk. The standard tool is the **Capital Asset Pricing Model (CAPM)**:
+
+> Cost of Equity = Risk-Free Rate + Beta x Equity Risk Premium
+
+- **Risk-free rate**: The yield on long-term government bonds (typically 10-year Treasuries).
+- **Beta**: A measure of how much a stock moves with the overall market. A beta of 1.2 means the stock is 20% more volatile than the market.
+- **Equity risk premium (ERP)**: The additional return investors demand for holding stocks instead of risk-free bonds. Historically around 4-6% for the U.S. market, though it varies by country and time period.
+
+Damodaran is careful to note that CAPM is a flawed but useful model. Beta is unstable, backward-looking, and often fails to capture the true risk of a business. The equity risk premium is not directly observable and must be estimated. But the framework forces you to think systematically about what risk means and what return you need to compensate for it -- and that discipline is more valuable than the specific number you calculate.
+
+### The Weighted Average Cost of Capital (WACC)
+
+When discounting FCFF, you need the **WACC** -- the blended cost of all the capital the firm uses:
+
+> WACC = (E/V) x Cost of Equity + (D/V) x Cost of Debt x (1 - Tax Rate)
+
+Where E is the market value of equity, D is the market value of debt, and V = E + D. The tax adjustment on debt reflects the tax deductibility of interest payments, which makes debt cheaper on an after-tax basis.
+
+A common mistake is using book values for E and D instead of market values, or using the coupon rate on existing debt instead of the current market rate. Another mistake is treating WACC as a fixed number -- it changes as the capital structure changes, and it should reflect the target or optimal capital structure, not necessarily the current one.
+
+### Terminal Value: Where Most of the Value Lives
+
+In a typical DCF, you project free cash flows for 5-10 years and then estimate a **terminal value** that captures everything beyond that horizon. In most valuations, the terminal value accounts for 60-80% of total value, which means getting it right (or at least not getting it catastrophically wrong) is critical.
+
+Two standard approaches:
+
+**Perpetuity growth model**: Assume free cash flows grow at a stable rate forever after the explicit forecast period.
+
+> Terminal Value = Final Year FCF x (1 + g) / (Discount Rate - g)
+
+The growth rate (g) must be at or below the long-term nominal GDP growth rate -- no company grows faster than the economy forever. A common and dangerous mistake is using a growth rate that is too high, which produces a wildly inflated terminal value.
+
+**Exit multiple method**: Apply a market multiple (such as EV/EBITDA) to the final year's earnings or cash flow.
+
+> Terminal Value = Final Year EBITDA x Exit Multiple
+
+This is simpler but introduces circularity: you are using the market's current pricing to estimate intrinsic value, which defeats the purpose if the market is wrong. Damodaran prefers the perpetuity growth model for its logical consistency but acknowledges that both methods require judgment.
+
+## Relative Valuation: Pricing by Comparison
+
+Relative valuation answers a different question: not "what is this business worth?" but "what is the market paying for similar businesses?" It is faster, more intuitive, and more commonly used than DCF -- and more easily abused.
+
+### The Core Multiples
+
+**Price-to-Earnings (P/E)**: The most widely quoted multiple. Best suited for mature, profitable companies with stable earnings. Fails for companies with negative earnings, distorted by one-time items, and misleading for companies with different capital structures (because earnings are an after-debt measure).
+
+**EV/EBITDA**: Enterprise value divided by earnings before interest, taxes, depreciation, and amortization. Better than P/E for comparing companies with different capital structures and tax rates because it is a pre-debt, pre-tax measure. Preferred for capital-intensive industries and for M&A analysis. However, it ignores capital expenditure requirements -- a company that needs to spend heavily to maintain its asset base will look misleadingly cheap on EV/EBITDA.
+
+**Price-to-Book (P/B)**: Market capitalization divided by book value of equity. Most useful for financial institutions (banks, insurance companies) where assets are marked to market and book value approximates liquidation value. Less meaningful for asset-light businesses (technology, services) where the most valuable assets -- intellectual property, brand, human capital -- do not appear on the balance sheet.
+
+### When to Use Each
+
+| Situation | Best Multiple |
+|---|---|
+| Mature, profitable company | P/E |
+| Comparing across capital structures | EV/EBITDA |
+| Capital-intensive industries | EV/EBITDA |
+| Financial institutions | P/B |
+| High-growth, unprofitable companies | EV/Revenue (with caution) |
+| Real estate | Price/FFO or NAV |
+
+The cardinal sin of relative valuation is comparing companies that are not truly comparable. A "cheap" P/E means nothing if the company has lower growth, higher risk, or lower margins than its peers. Every multiple is a function of growth, risk, and cash flow -- and if you do not adjust for these differences, you are just finding the cheapest stock in a group, not the most undervalued one.
+
+## The Lifecycle of a Company: Matching Method to Stage
+
+One of Damodaran's most practical frameworks is matching the valuation method to the company's stage in its lifecycle:
+
+**Startup / Pre-revenue**: Traditional DCF is nearly useless because there are no cash flows to discount and every assumption is a guess. Use scenario analysis, option pricing models (the business as a real option), or revenue multiples with extreme caution. Accept that you are making a bet on a narrative, not a calculation.
+
+**Young growth**: Revenue is growing rapidly but the company may be unprofitable. Use revenue-based multiples (EV/Revenue) or a DCF with a long explicit forecast period, high growth assumptions, and a gradual fade to maturity. The key inputs are the total addressable market and the path to profitability.
+
+**Mature growth**: The company has established margins, predictable cash flows, and moderate growth. This is the sweet spot for DCF valuation and earnings-based multiples (P/E, EV/EBITDA). The key inputs are sustainable margins, reinvestment rates, and cost of capital.
+
+**Mature / Stable**: Growth has slowed to the economy's growth rate. Cash flows are predictable, dividends are meaningful, and the terminal value dominates. DCF works well, and dividend discount models become practical. The key question is whether the company can maintain its current profitability.
+
+**Decline**: Revenue is shrinking, margins are compressing, and the company may be worth more dead than alive. Liquidation value, asset-based valuation, and distressed debt analysis become relevant. A DCF with negative growth and shrinking reinvestment is possible but requires careful handling of the terminal value.
+
+## Narrative and Numbers: The Story Behind the Spreadsheet
+
+Damodaran's most distinctive insight -- and the one that separates competent analysts from great ones -- is his insistence that **every valuation is a story**. The numbers in your spreadsheet are not inputs; they are translations of a narrative about the company's future. What is the company's competitive advantage? How big is the addressable market? Can management execute? What could go wrong?
+
+A DCF model with a 25% revenue growth rate is not just a mathematical assumption. It is a claim about the world: that this company will find enough customers, fend off enough competitors, and execute well enough to grow at that rate. If you cannot articulate the story behind the number, the number is meaningless.
+
+This works in reverse, too. When you read an analyst report that says a stock is worth $150, the right question is not "are the math and formulas correct?" The right question is "what story is this analyst telling, and do I believe it?" Two analysts can build technically perfect DCF models and arrive at wildly different values because they are telling different stories about the same company. Valuation is a structured argument, not a calculation.
+
+## Common Valuation Mistakes
+
+Damodaran catalogs the errors that plague both novice and experienced analysts:
+
+- **Confusing price and value.** Price is what the market quotes. Value is what the business is worth based on its cash flows and risk. They can diverge for extended periods.
+- **Anchoring to the current price.** If a stock trades at $100, analysts unconsciously build models that produce values near $100. The market price becomes the gravitational center of the analysis rather than an independent variable to be challenged.
+- **Using unrealistic growth rates.** Growth is the most abused input in valuation. Projecting 20% revenue growth for a decade implies the company will be 6x larger -- does that make sense given the industry, the competition, and the laws of large numbers?
+- **Ignoring reinvestment.** Growth is not free. A company that grows revenue at 15% must reinvest in working capital, fixed assets, and R&D to support that growth. A model that projects high growth without commensurate reinvestment is fantasy.
+- **Treating WACC as static.** The cost of capital changes as the company evolves. A young, risky company has a higher WACC than the same company at maturity. Locking in a single WACC for a 10-year projection misses this dynamic.
+- **Terminal value abuse.** Plugging in an exit multiple without thinking about what it implies for long-term growth and margins. Or using a perpetuity growth rate above the economy's growth rate, which implies the company will eventually become larger than the global economy.
 
 ## Why This Matters
 
-Valuation is the central skill of investing. Whether you are analyzing a public equity, evaluating a private company, or assessing an acquisition target, the ability to estimate intrinsic value and compare it to market price is what separates informed investment decisions from speculation. Damodaran's framework is the industry standard, and understanding both intrinsic and relative valuation methods is essential for any analyst or portfolio manager.
+Valuation is the central skill of investing. It is what separates an investment decision from a speculation. Whether you are analyzing a public equity, evaluating a private company, assessing an acquisition target, or simply trying to decide whether a stock is worth buying at its current price, the ability to estimate intrinsic value and compare it to market price is the foundation of everything else. Damodaran's framework is the industry standard not because it is perfect but because it provides a disciplined, transparent structure for making decisions under uncertainty. Every input is explicit, every assumption is visible, and every conclusion can be challenged.
+
+The distinction between price and value is perhaps the most important lesson in the book. Markets are efficient enough that prices are usually reasonable, but not so efficient that prices are always right. The investor's edge comes from identifying the gaps -- and having the conviction and the analytical framework to act on them.
 
 ## Key Takeaways
 
-- Intrinsic value is the present value of expected future cash flows -- every asset's value ultimately comes from the cash it generates.
-- A DCF model requires estimates of cash flows, growth rates, cost of capital, and terminal value, each of which involves judgment and uncertainty.
-- Relative valuation (multiples) is useful for quick comparisons but can be misleading if the comparable companies are themselves mispriced.
-- Valuation is not about getting a precise number -- it is about building a range and understanding the key drivers that determine where in that range the true value lies.
-- The biggest valuation errors come from biases: anchoring to current prices, using unrealistic growth assumptions, or ignoring the cost of capital.
+- Intrinsic value is the present value of expected future cash flows. Every asset's value ultimately comes from the cash it generates for its owners.
+- Use FCFF discounted at WACC for most companies; use FCFE discounted at cost of equity for financial institutions or stable capital structures.
+- The cost of equity (via CAPM) and WACC require estimates of beta, the equity risk premium, and the cost of debt -- all of which involve judgment, not just calculation.
+- Terminal value typically accounts for 60-80% of a DCF's output. The perpetuity growth rate must not exceed long-term GDP growth.
+- Relative valuation (P/E, EV/EBITDA, P/B) is fast and intuitive but dangerous if you do not adjust for differences in growth, risk, and margins across comparable companies.
+- Match your valuation method to the company's lifecycle stage: revenue multiples for startups, DCF for growth and mature companies, liquidation value for declining businesses.
+- Every valuation tells a story. If you cannot articulate the narrative behind your numbers, the numbers are meaningless.
+- The biggest valuation errors come from behavioral biases: anchoring to market prices, using unrealistic growth assumptions, and ignoring reinvestment requirements.
+
+## Further Reading
+
+- [Buffett's Shareholder Letters](/read/buffett-shareholder-letters) -- the greatest practitioner of valuation-driven investing, applying these principles at scale for decades
+- [Fisher's Common Stocks and Uncommon Profits](/read/fisher-common-stocks) -- the qualitative side of valuation: how to assess management, competitive positioning, and growth potential before you open a spreadsheet
+- [Stigler's Theory of Price](/read/stigler-theory-of-price) -- the microeconomic foundations that underpin cost structures, market dynamics, and competitive analysis
 
 ---
 
-*Full study notes and detailed summaries are being developed. Check back soon.*
+*This is a living document. Contributions welcome via [GitHub](https://github.com/NickNemo17/wyandanch-library).*

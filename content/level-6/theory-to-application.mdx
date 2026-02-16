@@ -1,21 +1,121 @@
 ## Overview
 
-From Theory to Application bridges the gap between academic finance theory and the practical realities of implementing investment strategies. This module addresses the challenges that arise when a theoretically attractive strategy encounters the real world: transaction costs, market impact, slippage, execution constraints, data quality issues, and the fundamental problem of overfitting -- the risk that a strategy that looks brilliant in backtests is merely capturing noise rather than genuine market inefficiencies.
+From Theory to Application bridges the gap between academic finance theory and the practical realities of implementing investment strategies. This module addresses the complete pipeline: from modeling individual asset behavior using stochastic processes, to detecting structural breaks and jumps, to building cointegrated pairs trades, to constructing and backtesting full portfolio strategies. At every stage, the emphasis is on the gap between the theoretical ideal and the messy reality of live markets -- transaction costs, data quality, execution slippage, and the ever-present risk of overfitting.
 
-The curriculum covers the full implementation pipeline: translating a research idea into a testable hypothesis, designing a proper backtest framework (including out-of-sample testing, walk-forward analysis, and cross-validation), estimating realistic transaction costs and market impact, and building the execution infrastructure to run a strategy in production. Special attention is given to the pitfalls that destroy strategies between the lab and the trading desk: look-ahead bias, survivorship bias, data snooping, and the gap between theoretical and achievable Sharpe ratios.
+The curriculum draws heavily on frameworks presented by Boyko, covering single-asset behavior analysis (mean reversion vs. trend following), jump diffusion models, autoregressive time series, stationarity testing, pairs trading via cointegration, backtesting methodology, portfolio construction, volatility trading, and regime detection. The goal is not just to understand the models but to internalize the discipline required to move from a research idea to a live, profitable strategy without fooling yourself along the way.
+
+## Single-Asset Behavior: Mean Reversion vs. Trend Following
+
+The first question a quantitative researcher asks about any asset is: does its price tend to revert to a mean, or does it trend? The answer determines the entire strategy framework.
+
+**Mean Reversion and the Ornstein-Uhlenbeck Process.** A mean-reverting asset is modeled by the Ornstein-Uhlenbeck (OU) process:
+
+dX(t) = theta * (mu - X(t)) * dt + sigma * dW(t)
+
+Here, theta is the speed of mean reversion, mu is the long-run mean, sigma is volatility, and W(t) is a Wiener process. When the price deviates from mu, the drift term pulls it back. The key parameter is theta: a higher theta means faster reversion and more frequent trading opportunities.
+
+**Half-Life Calculation.** The half-life of mean reversion -- how long it takes for a deviation to shrink by half -- is:
+
+t_half = ln(2) / theta
+
+You estimate theta by regressing the change in price on the lagged price level: delta_X(t) = a + b * X(t-1) + epsilon. The coefficient b estimates -theta, so theta = -b, and the half-life is ln(2) / (-b). A half-life of 5-20 days is typically the sweet spot for tradeable mean-reversion strategies. Too short and transaction costs dominate; too long and capital is tied up unproductively.
+
+**Trend Following and Geometric Brownian Motion.** If an asset trends rather than reverts, we model it with Geometric Brownian Motion (GBM) with drift:
+
+dS(t) = mu * S(t) * dt + sigma * S(t) * dW(t)
+
+Trend-following strategies exploit the drift term mu. In practice, trend detection uses moving average crossovers, breakout signals, or time-series momentum (the past 12-month return as a predictor of the next month's return). The critical distinction: mean-reversion strategies sell strength and buy weakness; trend-following strategies buy strength and sell weakness.
+
+## Jump Diffusion Models
+
+Standard GBM assumes continuous price paths, but real markets exhibit jumps -- sudden, large price moves driven by earnings surprises, geopolitical events, or liquidity shocks.
+
+**The Merton Jump-Diffusion Model** adds a Poisson jump process to GBM:
+
+dS/S = (mu - lambda * k) * dt + sigma * dW + J * dN(t)
+
+Here, N(t) is a Poisson process with intensity lambda (average number of jumps per unit time), and J is the random jump size (typically log-normally distributed with mean k). The model produces the fat tails and excess kurtosis observed in real return distributions.
+
+**Lee-Mykland Jump Detection.** To empirically identify jumps in price data, the Lee-Mykland test examines high-frequency returns. The test statistic compares each return to a local volatility estimate: L(i) = |r(i)| / sigma_hat. Under the null of no jump, the maximum of L(i) over a window follows a known extreme-value distribution. Returns that exceed the critical value are flagged as jumps. This is essential for cleaning data before fitting continuous-time models and for understanding when your strategy's assumptions are violated.
+
+## Autoregressive Models and Model Selection
+
+**AR(p) Models.** An autoregressive model of order p predicts the current value from p lagged values:
+
+X(t) = c + phi_1 * X(t-1) + phi_2 * X(t-2) + ... + phi_p * X(t-p) + epsilon(t)
+
+The key question is choosing p. Too few lags miss genuine serial dependence; too many lags overfit noise.
+
+**AIC and BIC for Model Selection.** The Akaike Information Criterion (AIC) and Bayesian Information Criterion (BIC) formalize the bias-variance tradeoff:
+
+AIC = 2k - 2 * ln(L)
+BIC = k * ln(n) - 2 * ln(L)
+
+Where k is the number of parameters, L is the maximized likelihood, and n is the sample size. BIC penalizes complexity more heavily than AIC and tends to select more parsimonious models. In practice, fit models for p = 1, 2, ..., p_max, compute both criteria, and select the order that minimizes BIC (or AIC, depending on your priority).
+
+## Stationarity Testing
+
+Most time-series models require stationarity -- the statistical properties of the process do not change over time. Financial prices are almost always non-stationary, but returns and certain spread series can be stationary.
+
+**Augmented Dickey-Fuller (ADF) Test.** The ADF test checks for a unit root. The null hypothesis is that the series has a unit root (non-stationary). A sufficiently negative test statistic rejects the null, suggesting stationarity. Critical values depend on whether you include a constant, a trend, or neither.
+
+**KPSS Test.** The Kwiatkowski-Phillips-Schmidt-Shin test reverses the hypothesis: the null is that the series is stationary. Rejecting the KPSS null provides evidence of non-stationarity. Using both ADF and KPSS together provides a more robust assessment: if ADF rejects and KPSS does not reject, you have strong evidence of stationarity.
+
+**Phillips-Perron Test.** Similar to ADF but uses non-parametric corrections for serial correlation. It is more robust to heteroskedasticity in the error term and serves as a useful cross-check on ADF results.
+
+## Pairs Trading and Cointegration
+
+Pairs trading exploits the tendency of economically linked assets to move together over time, even if individual prices are non-stationary.
+
+**Cointegration.** Two non-stationary series X(t) and Y(t) are cointegrated if there exists a linear combination Z(t) = Y(t) - beta * X(t) that is stationary. The spread Z(t) mean-reverts, which creates trading opportunities: go long the spread when it is low, short when it is high.
+
+**The Engle-Granger Two-Step Test.** Step 1: Regress Y(t) on X(t) by OLS to estimate beta. Step 2: Apply the ADF test to the residuals Z(t) = Y(t) - beta_hat * X(t). If the residuals are stationary (reject the unit root null), the pair is cointegrated. Important: the critical values for this ADF test are different from the standard ones because the residuals are estimated, not observed -- use Engle-Granger specific tables.
+
+**Spread Construction and Trading.** Once cointegration is established, compute the spread Z(t), calculate its z-score (deviation from mean in standard deviation units), and trade when the z-score exceeds a threshold (e.g., enter at +/- 2 sigma, exit at 0). The half-life of the spread, estimated via the OU framework above, determines position sizing and expected holding period.
+
+## Backtesting: Getting It Right
+
+A backtest simulates how a strategy would have performed on historical data. The challenge is not building the backtest -- it is avoiding the dozens of ways a backtest can lie to you.
+
+**Event-Driven vs. Vectorized.** Vectorized backtests operate on arrays of prices and signals using matrix operations -- fast but prone to subtle look-ahead bias. Event-driven backtests process each market event sequentially (new price tick, fill confirmation, rebalance trigger), mimicking the actual information flow in live trading. Event-driven is slower but more realistic.
+
+**Look-Ahead Bias.** Using information that would not have been available at the time of the trading decision. Common sources: using closing prices to make decisions that must be made before the close, using adjusted data that incorporates future corporate actions, or using index membership lists that reflect future reconstitution dates.
+
+**Survivorship Bias.** Testing only on assets that survived the full sample period. Companies that went bankrupt or were delisted are excluded, biasing returns upward. Always use a point-in-time universe that includes delisted securities.
+
+**Overfitting.** The most insidious problem. A strategy with 20 tunable parameters can be made to fit any historical dataset beautifully while having zero predictive power. Defenses include minimizing free parameters, using walk-forward out-of-sample testing, and applying the deflated Sharpe ratio (see Systematic Indices module).
+
+## Portfolio Construction, Volatility Trading, and Regime Detection
+
+**Portfolio Construction.** Combine individual signals and positions into a coherent portfolio using mean-variance optimization, risk parity, or equal-weight schemes. Account for correlation between positions -- the portfolio is not the sum of its parts.
+
+**Volatility Trading.** Trade the difference between implied and realized volatility. If implied vol is higher than your forecast of realized vol, sell options (delta-hedged); if lower, buy. The OU framework applies directly to the implied-realized spread.
+
+**Regime Detection with Hidden Markov Models.** Markets alternate between regimes (bull/bear, high-vol/low-vol, trending/mean-reverting). A Hidden Markov Model (HMM) estimates the probability of being in each regime at each point in time, given observed returns. The model parameters -- transition probabilities between regimes, and the return distribution within each regime -- are estimated via the Baum-Welch (EM) algorithm. Regime detection allows dynamic strategy allocation: run mean-reversion in range-bound regimes, trend-following in trending regimes.
 
 ## Why This Matters
 
-The graveyard of quantitative finance is full of strategies that worked beautifully in backtests and failed in production. Understanding the implementation pipeline -- and the many ways a strategy can degrade between theory and practice -- is what separates successful quantitative practitioners from academic researchers. This module provides the practical toolkit for turning research insights into executable, profitable strategies.
+The graveyard of quantitative finance is full of strategies that worked beautifully in backtests and failed in production. Understanding the full implementation pipeline -- from stochastic modeling to stationarity testing to cointegration to disciplined backtesting -- is what separates practitioners who make money from those who merely publish papers. Every concept in this module addresses a specific failure mode: ignoring jumps, overfitting AR models, trading non-stationary spreads, or trusting backtests that embed look-ahead bias. Mastering this pipeline is the price of admission to live systematic trading.
 
 ## Key Takeaways
 
-- Transaction costs, market impact, and slippage can erode or eliminate theoretical alpha -- realistic cost modeling is essential.
-- Backtesting must be designed to minimize overfitting: use proper out-of-sample testing, walk-forward analysis, and conservative assumptions.
-- Common biases (look-ahead, survivorship, data snooping) can make backtests appear far more profitable than real-world performance will be.
-- Execution quality matters: the gap between a theoretical fill and an actual fill can determine whether a strategy is profitable or not.
-- The implementation pipeline (research, backtest, paper trade, live deployment, monitoring) requires discipline and infrastructure at every stage.
+- The OU process models mean-reversion; GBM with drift models trending behavior. The half-life of the OU process determines whether mean-reversion is tradeable.
+- Jump diffusion models (Merton) capture the fat tails that GBM misses. The Lee-Mykland test identifies jumps empirically.
+- AR(p) models capture serial dependence; AIC/BIC provide principled model selection by penalizing complexity.
+- Stationarity is a prerequisite for most time-series models. Use ADF and KPSS together -- they test complementary null hypotheses.
+- Cointegration (Engle-Granger two-step test) is the foundation of pairs trading: find two non-stationary series whose spread is stationary.
+- Backtesting is the easiest place to fool yourself. Look-ahead bias, survivorship bias, and overfitting can make any strategy look profitable.
+- Event-driven backtests are slower but more realistic than vectorized approaches because they respect the actual information flow.
+- HMMs enable regime detection, allowing dynamic allocation between mean-reversion and trend-following strategies.
+
+## Further Reading
+
+- [Quantitative Foundations](/read/quant-foundations) -- the mathematical prerequisites for this module
+- [GARCH 101](/read/garch-101) -- volatility modeling fundamentals
+- [Systematic Indices](/read/systematic-indices) -- portfolio construction and factor-based design
+- [Gappy Lecture 1: Alpha Research](/read/gappy-lecture-1-alpha-research) -- signal construction and testing
+- [Econometrics & FX](/read/econometrics-and-fx) -- applied time series and regression methods
 
 ---
 
-*Full study notes and detailed summaries are being developed. Check back soon.*
+*This is a living document. Contributions welcome via [GitHub](https://github.com/NickNemo17/wyandanch-library).*

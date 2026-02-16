@@ -1,21 +1,133 @@
 ## Overview
 
-Market microstructure is the study of how orders become trades — the mechanics of price discovery, order book dynamics, information asymmetry, and the economics of liquidity provision. While most investors think about *what* to buy, microstructure focuses on *how* to buy it: the difference between the two can be the difference between profit and loss.
+Market microstructure is the study of how orders become trades -- the mechanics of price discovery, order book dynamics, information asymmetry, and the economics of liquidity provision. While most investors think about *what* to buy, microstructure focuses on *how* to buy it: the difference between the two can be the difference between profit and loss. This module covers the full stack of microstructure, from the basic mechanics of limit order books through advanced signals like depth imbalance and order flow toxicity, to a complete 13-step execution algorithm that takes a trading signal from generation through fill confirmation.
 
-This material covers order book mechanics, the role of market makers, information leakage, adverse selection, and the empirical regularities of trade and quote data. It bridges the gap between abstract efficient markets theory and the messy reality of how prices actually form.
+The modern market is an ecosystem of diverse participants -- market makers providing liquidity, institutional investors executing large orders, high-frequency traders arbitraging price discrepancies, and retail traders whose flow is often sold to wholesalers. Understanding the incentives, information sets, and strategies of each participant is essential for anyone who needs to execute trades in size without being systematically disadvantaged. The concepts here bridge the gap between abstract efficient markets theory and the messy, adversarial reality of how prices actually form tick by tick.
+
+## Order Book Mechanics
+
+The central limit order book (CLOB) is the data structure at the heart of most modern markets. It maintains two sorted lists:
+
+**Bid side**: Limit buy orders sorted by price (highest first), then by time (earliest first at each price level). The best bid is the highest price at which someone is willing to buy.
+
+**Ask side**: Limit sell orders sorted by price (lowest first), then by time. The best ask is the lowest price at which someone is willing to sell.
+
+The **spread** is the difference between the best ask and best bid: Spread = Best Ask - Best Bid. The **midpoint** is (Best Bid + Best Ask) / 2.
+
+**Limit orders** rest in the book waiting to be matched. They provide liquidity -- they are passive. **Market orders** execute immediately against the best available limit orders. They consume liquidity -- they are aggressive. When a market buy order arrives, it matches against the lowest-priced sell limit orders, consuming them. If the order is larger than the available quantity at the best ask, it "walks the book," filling at progressively worse prices.
+
+**Depth** at each price level is the total quantity of limit orders resting there. The depth profile -- how much liquidity is available at each price away from the midpoint -- determines the market impact of large orders. A deep book absorbs large orders with minimal price movement. A thin book means even moderate orders cause significant impact.
+
+## Depth Imbalance Signals
+
+The ratio of bid depth to ask depth near the top of the book is a powerful short-term directional signal:
+
+**Depth Imbalance = (Bid Depth - Ask Depth) / (Bid Depth + Ask Depth)**
+
+When imbalance is positive (more depth on the bid), the price tends to move up in the near term. Intuitively, heavy bid depth means there is more buying interest to absorb selling pressure, and less selling interest to absorb buying pressure.
+
+**Distance-weighted depth** refines this signal by giving more weight to depth at price levels closer to the midpoint, which is more likely to be "real" (executed against) rather than strategic (placed far from the market to influence perception):
+
+**Weighted Depth = Sum(quantity_i / distance_i)**
+
+where distance_i is the price distance from the midpoint to each level. This weights near-the-money depth more heavily than deep-book depth, which is often pulled before it can be hit.
+
+The **flow-to-depth ratio** measures aggressive order flow relative to available depth:
+
+**Flow-to-Depth = Aggressive Volume / Available Depth**
+
+A high ratio indicates that aggressive traders are overwhelming available liquidity -- a signal of informed flow or urgency that typically precedes directional moves.
+
+## Order Flow Metrics
+
+**Kyle's Lambda** quantifies the price impact of order flow. In Kyle's (1985) model, the informed trader's optimal strategy results in a linear relationship between order flow and price change:
+
+**Delta_Price = lambda * Order_Flow_Imbalance**
+
+Lambda measures the information content per unit of flow. Higher lambda means more information asymmetry -- each unit of net buying or selling moves the price more because the market maker suspects informed trading.
+
+**VPIN (Volume-Synchronized Probability of Informed Trading)** estimates the fraction of trading volume that is information-driven. It computes buy and sell volume in fixed-volume buckets (rather than fixed-time intervals) and measures the imbalance:
+
+**VPIN = Sum(|V_buy - V_sell|) / Total Volume**
+
+High VPIN indicates toxic flow -- a disproportionate share of volume is coming from informed traders, making it dangerous for market makers to provide liquidity. VPIN spiked dramatically before the Flash Crash of May 6, 2010, providing an early warning signal.
+
+## Microprice
+
+The standard midpoint -- (Best Bid + Best Ask) / 2 -- treats both sides of the book equally. But if there are 1,000 shares on the bid and only 100 shares on the ask, the "fair" price should be closer to the ask (the scarce side). The **microprice** corrects for this:
+
+**Microprice = Best Bid * (Ask Size / (Bid Size + Ask Size)) + Best Ask * (Bid Size / (Bid Size + Ask Size))**
+
+The microprice weights each side's price by the *other* side's depth. When ask size is small relative to bid size, the microprice shifts toward the ask -- reflecting that the next trade is more likely to occur at the ask. Microprice is a better estimate of the "true" price than the simple midpoint and is widely used in high-frequency market making.
+
+## Fat-Tailed Risk Management
+
+Financial returns are not normally distributed. They exhibit fat tails -- extreme events occur far more frequently than a Gaussian model predicts. The **Student-t distribution** with low degrees of freedom captures this:
+
+With **nu = 4** degrees of freedom, the Student-t distribution has finite variance but infinite kurtosis. This means the model generates extreme events (4+ standard deviation moves) far more often than the Gaussian, matching empirical return distributions more accurately.
+
+Risk management under fat-tailed distributions requires wider stop-losses, larger capital buffers, and more conservative position sizing than Gaussian models suggest. A 5-sigma event under a Gaussian model (probability ~3 in 10 million) might be a 3-sigma event under Student-t(4) (probability ~1 in 100). The practical difference is enormous.
+
+## Jump-Based Market Making
+
+Standard market-making models assume continuous price processes. In reality, prices jump -- news events, earnings releases, and order flow shocks cause discontinuous price movements. Jump-diffusion market making models adjust spreads and inventory limits to account for jump risk:
+
+- **Wider spreads** during high-jump-risk periods (earnings, Fed announcements) to compensate for the risk of a sudden adverse move while holding inventory.
+- **Reduced depth** posted because standing limit orders become stale options that informed traders can pick off after a jump.
+- **Faster inventory reversion** because the cost of holding inventory is higher when jumps can wipe out accumulated spread income.
+
+## Maker-Taker Economics
+
+Most modern exchanges operate on a **maker-taker fee model**:
+
+- **Makers** (providers of limit orders) receive a rebate -- typically $0.002 per share on US equity exchanges.
+- **Takers** (aggressive orders that remove liquidity) pay a fee -- typically $0.003 per share.
+
+The exchange captures the net difference. This fee structure incentivizes liquidity provision and creates a business model for high-frequency market makers who trade at near-zero net margin, earning rebates on millions of shares daily.
+
+The economics matter for execution. If you place a limit order and get filled, you earn the rebate. If you send a market order, you pay the crossing fee. For large institutional orders, the choice between passive execution (earning rebates but risking non-fill and information leakage) and aggressive execution (paying fees but guaranteeing fills) is a central tactical decision.
+
+## The Complete 13-Step Execution Algorithm
+
+A production-grade execution algorithm follows this pipeline:
+
+1. **Signal generation**: Alpha model produces a trade signal (direction, urgency, expected duration).
+2. **Position sizing**: Risk management converts the signal into a target position given portfolio constraints.
+3. **Order generation**: Target position minus current position equals the order to execute.
+4. **Venue selection**: Route to the exchange or dark pool with the best expected fill quality.
+5. **Order type selection**: Limit, market, midpoint peg, or conditional based on urgency and market state.
+6. **Timing schedule**: Allocate the order across time buckets (TWAP, VWAP, or adaptive based on volume profiles).
+7. **Child order slicing**: Break the parent order into smaller child orders to minimize information leakage.
+8. **Pre-trade risk checks**: Verify position limits, credit limits, fat finger checks, and regulatory constraints.
+9. **Order submission**: Send the child order to the venue.
+10. **Fill monitoring**: Track partial fills, update remaining quantity, monitor execution quality.
+11. **Adaptive adjustment**: Modify pace, aggressiveness, or venue based on real-time market conditions.
+12. **Fill confirmation**: Reconcile fills with the order management system.
+13. **Post-trade analysis**: Compare achieved execution to benchmark (arrival price, VWAP) and attribute slippage.
+
+Each step involves quantitative models, engineering infrastructure, and risk controls. The entire pipeline must execute in milliseconds for high-frequency strategies and minutes for institutional block orders.
 
 ## Why This Matters
 
-Transaction costs are not just commissions — they include market impact, adverse selection costs, and timing costs. For any strategy that trades frequently or in size, understanding microstructure is critical. Even for fundamental investors, understanding how your orders interact with the market can significantly improve execution quality.
+Transaction costs are not just commissions -- they include market impact, adverse selection costs, timing costs, and fee/rebate economics. For any strategy that trades frequently or in size, understanding microstructure is critical. Even for fundamental investors, understanding how your orders interact with the market -- and how information leaks through the order book -- can significantly improve execution quality and protect alpha from being captured by intermediaries.
 
 ## Key Takeaways
 
-- Price discovery happens through the interaction of informed and uninformed traders
-- Market makers profit from the bid-ask spread but face adverse selection from informed flow
-- Order book depth and resilience determine how much you can trade without moving the price
-- Information is reflected in prices through a dynamic process, not instantaneously
-- Optimal execution requires balancing urgency against market impact
+- The central limit order book is the data structure of modern markets: understanding depth, spread, and order priority is foundational.
+- Depth imbalance (bid-ask depth ratio) is a short-term directional signal: more depth on the bid predicts upward price movement.
+- Kyle's lambda quantifies how much prices move per unit of order flow -- a measure of information asymmetry and market impact.
+- VPIN measures order flow toxicity and can serve as an early warning signal for market stress events.
+- Microprice (volume-weighted midpoint) is a better fair-price estimate than the simple midpoint because it accounts for asymmetric depth.
+- Fat-tailed distributions (Student-t with low degrees of freedom) are essential for realistic risk management -- Gaussian models dramatically understate tail risk.
+- Maker-taker economics create a rebate-driven business model for liquidity providers and affect the passive-vs-aggressive execution decision.
+- A complete execution algorithm involves 13 steps from signal generation through post-trade analysis, each requiring quantitative models and engineering infrastructure.
+
+## Further Reading
+
+- [Derivative Portfolio Management](/read/derivative-portfolio-management) -- the Greeks and risk management framework for options books, where execution quality directly impacts hedging P&L
+- [Model Implementation](/read/model-implementation) -- building production trading systems that implement the execution pipeline described here
+- [Quasi-Random Number Generation](/read/quasi-random-number-generation) -- Monte Carlo methods used for simulating order flow dynamics and market impact models
 
 ---
 
-*Full study notes and detailed summaries are being developed. Check back soon.*
+*This is a living document. Contributions welcome via [GitHub](https://github.com/NickNemo17/wyandanch-library).*

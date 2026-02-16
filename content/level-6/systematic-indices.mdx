@@ -1,21 +1,120 @@
 ## Overview
 
-Systematic Indices explores the design, construction, and evaluation of rules-based investment indices that go beyond traditional market-capitalization weighting. This module covers the evolution from passive cap-weighted benchmarks to "smart beta" and factor-tilted indices, which systematically overweight securities with characteristics associated with higher expected returns -- value, momentum, quality, low volatility, and size. The curriculum examines both the theoretical foundations (why certain factors earn premia) and the practical engineering (how to construct, rebalance, and manage an index in production).
+Systematic Indices explores the design, construction, and evaluation of rules-based investment indices that go beyond traditional market-capitalization weighting. This module covers factor construction from first principles -- defining value, momentum, and quality in mathematically precise terms -- and the portfolio engineering required to turn factor definitions into investable, scalable strategies. The emphasis is on doing this rigorously: estimating covariance matrices that do not blow up, incorporating transaction costs into optimization, and evaluating performance without falling prey to the inflated Sharpe ratios that plague backtested strategies.
 
-Key topics include index construction methodology (weighting schemes, rebalancing frequency, liquidity and capacity constraints), the distinction between risk premia and alpha, the role of indices as benchmarks and investable products (ETFs, index funds), and the challenges of factor timing, crowding, and decay. The module also covers the institutional landscape: how index providers (MSCI, FTSE, S&P) design and govern their products, and how the growth of passive investing has reshaped market structure and price discovery.
+The curriculum covers factor definitions and construction mechanics, the Black-Litterman model for combining market equilibrium with active views, Ledoit-Wolf shrinkage for covariance estimation, risk parity portfolio construction, Almgren-Chriss optimal execution, and the performance evaluation frameworks developed by Marcos Lopez de Prado. Every topic addresses the same fundamental tension: the gap between what works on paper and what survives contact with real markets, real costs, and real capital constraints.
+
+## Factor Definitions: Value, Momentum, and Quality
+
+A factor is a measurable characteristic of securities that is associated with a return premium. The three most established factors beyond market beta are value, momentum, and quality.
+
+**Value.** Value factors identify cheap securities relative to fundamentals. The two most common measures are:
+
+- Book-to-Market (B/M): Book equity divided by market equity. High B/M stocks are "cheap" -- the market prices them below their accounting value. Fama and French (1993) documented the value premium using HML (High Minus Low B/M) portfolios.
+- Earnings Yield (E/P): Earnings per share divided by price per share, or equivalently the inverse of the P/E ratio. High earnings yield stocks deliver more current earnings per dollar invested.
+
+**Momentum.** Momentum factors exploit the tendency of recent winners to continue winning and recent losers to continue losing. The standard construction uses 12-1 month returns: the cumulative return over the past 12 months, skipping the most recent month (which exhibits short-term reversal). Jegadeesh and Titman (1993) documented this premium. The skip-month is critical -- including it introduces a mean-reversion effect that contaminates the momentum signal.
+
+**Quality.** Quality factors identify companies with strong, sustainable fundamentals. Common measures include:
+
+- Return on Equity (ROE): Net income divided by shareholders' equity. High ROE indicates efficient use of capital.
+- Accruals: The gap between reported earnings and cash flow. Low accruals indicate earnings are backed by real cash, not accounting adjustments.
+- Leverage: Debt-to-equity or debt-to-assets. Lower leverage implies less financial risk and more stable earnings.
+
+Novy-Marx (2013) showed that gross profitability (revenue minus cost of goods sold, scaled by assets) is a particularly powerful quality measure.
+
+## The Black-Litterman Model
+
+Mean-variance optimization is famously unstable: small changes in expected return estimates produce wildly different portfolios. The Black-Litterman (BL) model addresses this by starting from market equilibrium and incorporating investor views as Bayesian updates.
+
+**Step 1: Implied Equilibrium Returns.** Reverse-engineer the expected returns implied by the current market-cap-weighted portfolio. If the market portfolio is optimal, then the implied excess return vector is:
+
+Pi = delta * Sigma * w_mkt
+
+Where delta is the risk aversion coefficient, Sigma is the covariance matrix, and w_mkt is the market-cap weight vector. These implied returns are the "prior."
+
+**Step 2: Incorporate Views.** Express active views as a system: P * mu = Q + epsilon, where P is a matrix identifying which assets are involved in each view, Q is the vector of expected returns from those views, and epsilon captures uncertainty in the views (with covariance matrix Omega).
+
+**Step 3: Posterior Returns.** The Black-Litterman posterior combines prior and views:
+
+mu_BL = [(tau * Sigma)^(-1) + P' * Omega^(-1) * P]^(-1) * [(tau * Sigma)^(-1) * Pi + P' * Omega^(-1) * Q]
+
+The beauty of BL is that when you have no views, the model defaults to market equilibrium weights. Views tilt the portfolio only to the extent that you are confident in them. This produces far more stable, intuitive portfolios than unconstrained mean-variance optimization.
+
+## Ledoit-Wolf Shrinkage
+
+The sample covariance matrix -- estimated directly from historical returns -- is extremely noisy when the number of assets is large relative to the number of observations. The eigenvalues of the sample covariance are too dispersed: the largest are too large, the smallest are too small (often negative for near-singular matrices). This makes any optimization that uses the covariance matrix or its inverse unreliable.
+
+**The Shrinkage Estimator.** Ledoit and Wolf (2004) proposed shrinking the sample covariance toward a structured target (e.g., the identity matrix scaled by average variance):
+
+Sigma_shrunk = alpha * F + (1 - alpha) * S
+
+Where S is the sample covariance, F is the shrinkage target, and alpha is the optimal shrinkage intensity (estimated from the data). The shrinkage intensity balances bias (from the target) against variance (from the sample). Higher alpha gives more weight to the stable but biased target; lower alpha gives more weight to the noisy but unbiased sample.
+
+The optimal alpha minimizes the expected Frobenius norm of the estimation error and has a closed-form formula. In practice, Ledoit-Wolf shrinkage dramatically improves the stability of portfolio optimization, risk parity calculations, and any procedure that inverts or decomposes the covariance matrix.
+
+## Risk Parity
+
+Traditional mean-variance portfolios tend to be dominated by one or two high-return (and high-risk) assets. Risk parity takes a different approach: allocate so that each asset contributes equally to total portfolio risk.
+
+The risk contribution of asset i is: RC_i = w_i * (Sigma * w)_i / sigma_p, where sigma_p is portfolio volatility. Risk parity solves for the weight vector w such that RC_i = RC_j for all i, j. There is no closed-form solution in general; iterative numerical methods (e.g., the Spinu algorithm or Newton-Raphson) are required.
+
+Risk parity does not require expected return estimates -- a major advantage, since return forecasts are notoriously unreliable. The tradeoff is that risk parity implicitly assumes equal Sharpe ratios across assets. If you believe some assets have higher risk-adjusted returns than others, risk parity is suboptimal. In practice, levered risk parity portfolios (like Bridgewater's All Weather) have delivered strong risk-adjusted returns with lower drawdowns than traditional 60/40 portfolios.
+
+## Transaction Cost Analysis: Almgren-Chriss Optimal Execution
+
+Systematic strategies must trade, and trading costs real money. The Almgren-Chriss (2000) framework models the optimal execution of a large order that must be completed within a fixed time horizon.
+
+**The Problem.** You need to sell X shares over T periods. Trading too fast incurs temporary market impact (moving the price against you). Trading too slowly exposes you to volatility risk (the price may move against you while you wait).
+
+**The Model.** Temporary impact is proportional to the trading rate: g(v) = eta * v. Permanent impact accumulates: h(v) = gamma * v. The cost function balances expected execution cost against execution risk (variance of execution cost). The risk-averse trader's objective is:
+
+min E[Cost] + lambda * Var[Cost]
+
+The optimal solution is a deterministic trading trajectory that balances urgency (trade faster when lambda is high or volatility is high) against impact (trade slower when market impact is high). The resulting trajectory is typically a smooth curve -- not a VWAP-style uniform schedule. The Almgren-Chriss framework gives you the optimal schedule and the expected implementation shortfall, which is the benchmark for evaluating any execution algorithm.
+
+## Performance Evaluation: The Deflated Sharpe Ratio
+
+The Sharpe ratio is the standard measure of risk-adjusted performance, but backtested Sharpe ratios are almost always overstated. The more strategies you test, the more likely you are to find one with a high Sharpe by chance alone.
+
+**The Deflated Sharpe Ratio (DSR)** corrects for multiple testing. Given N strategies tested, the DSR computes the probability that the best observed Sharpe ratio would have occurred by chance:
+
+DSR = Phi[(SR_max - SR_0) * sqrt(T-1) / sqrt(1 - gamma_3 * SR_max + (gamma_4 - 1)/4 * SR_max^2)]
+
+Where SR_0 is the expected maximum Sharpe under the null of no skill, gamma_3 is skewness, and gamma_4 is kurtosis. The DSR accounts for the number of trials, non-normality, and sample length. A strategy with a backtested Sharpe of 2.0 that was selected from 1,000 trials may have a DSR close to zero -- statistically indistinguishable from luck.
+
+## Marcos Lopez de Prado: Purged Cross-Validation
+
+Standard k-fold cross-validation assumes that observations are independent and identically distributed. Financial time series violate this assumption: observations are serially correlated, and training and test sets can overlap in time, creating information leakage.
+
+**Purged Cross-Validation.** Purge all training observations whose labels overlap in time with test observations. If a label at time t depends on returns from t to t+h, then any training observation within h periods of the test set boundary must be removed.
+
+**Combinatorial Purged Cross-Validation (CPCV).** Rather than using a single train/test split or sequential folds, CPCV generates all possible combinations of purged folds, tests on each, and aggregates results. This provides a more reliable estimate of out-of-sample performance and a distribution of backtest paths rather than a single path -- giving you a sense of how variable the strategy's performance is across different data partitions.
+
+These methods address the fundamental problem in strategy evaluation: standard techniques borrowed from machine learning assume i.i.d. data, and applying them naively to financial time series produces severely biased results.
 
 ## Why This Matters
 
-Systematic indices are the foundation of the modern investment management industry. Trillions of dollars track cap-weighted and factor-tilted benchmarks, and understanding how these indices are constructed, what biases they embed, and how they interact with market dynamics is essential for both passive and active investors. For quantitative practitioners, index construction is a core skill that directly translates to portfolio construction and factor-based strategy design.
+Systematic indices are the backbone of the modern investment management industry. Trillions of dollars track factor-tilted benchmarks, and the tools covered in this module -- factor construction, covariance estimation, portfolio optimization, execution modeling, and performance evaluation -- are the daily toolkit of anyone building or evaluating systematic strategies. Getting any one of these steps wrong can mean the difference between a strategy that generates real alpha and one that merely captures noise, costs money to trade, and collapses out of sample.
 
 ## Key Takeaways
 
-- Cap-weighted indices are the default benchmark but embed a systematic overweight to the most expensive stocks by construction.
-- Smart beta indices tilt toward factors (value, momentum, quality, low volatility) that have historically earned risk-adjusted premia.
-- Index construction choices (weighting, rebalancing, reconstitution) have material effects on returns, turnover, and capacity.
-- Factor crowding -- too much capital chasing the same systematic strategy -- can erode returns and increase drawdown risk.
-- Understanding the distinction between systematic risk premia (compensated by bearing risk) and alpha (genuine skill) is critical for evaluating any index or strategy.
+- Value (book-to-market, earnings yield), momentum (12-1 month returns), and quality (ROE, accruals, leverage) are the most established factor premia beyond market beta.
+- The Black-Litterman model produces stable portfolios by combining market equilibrium with investor views via Bayesian updating.
+- Sample covariance matrices are unreliable when assets outnumber observations. Ledoit-Wolf shrinkage toward a structured target dramatically improves stability.
+- Risk parity equalizes risk contributions across assets, avoiding the concentration problems of mean-variance optimization.
+- The Almgren-Chriss framework provides the optimal execution schedule that balances market impact against volatility risk.
+- Backtested Sharpe ratios are overstated due to multiple testing. The Deflated Sharpe Ratio corrects for the number of strategies tested, skewness, and kurtosis.
+- Standard cross-validation fails on financial time series due to serial correlation. Purged and combinatorial purged CV (Lopez de Prado) address information leakage between training and test sets.
+
+## Further Reading
+
+- [From Theory to Application](/read/theory-to-application) -- the implementation pipeline from research to live trading
+- [Gappy Lecture 1: Alpha Research](/read/gappy-lecture-1-alpha-research) -- signal construction and testing methodology
+- [Gappy Lecture 2: Factor Models](/read/gappy-lecture-2-factor-models) -- from CAPM to multi-factor frameworks
+- [Gappy Lecture 3: Factor Evaluation](/read/gappy-lecture-3-factor-evaluation) -- how to tell if a factor is real
+- [Quantitative Foundations](/read/quant-foundations) -- the mathematical prerequisites
 
 ---
 
-*Full study notes and detailed summaries are being developed. Check back soon.*
+*This is a living document. Contributions welcome via [GitHub](https://github.com/NickNemo17/wyandanch-library).*

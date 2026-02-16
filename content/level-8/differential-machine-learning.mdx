@@ -1,21 +1,118 @@
 ## Overview
 
-Differential machine learning combines automatic differentiation with neural networks to price and hedge derivative instruments. The core idea: instead of training a neural network solely to predict prices, you also train it to predict the sensitivities (Greeks) of those prices to their inputs. This "differential regularization" dramatically improves accuracy and produces hedging strategies directly from the trained model.
+Differential machine learning combines automatic differentiation with neural networks to price and hedge derivative instruments. The core idea: instead of training a neural network solely to predict prices, you also train it to predict the sensitivities (Greeks) of those prices to their inputs. This "differential regularization" dramatically improves accuracy, reduces the amount of training data required, and produces hedging strategies directly from the trained model -- no separate computation needed.
 
-Introduced by Huge and Savine, this approach represents a paradigm shift in computational finance — replacing Monte Carlo simulation with neural network approximation while preserving the analytical rigor of risk sensitivities.
+Introduced by Huge and Savine, this approach represents a paradigm shift in computational finance. Traditional Monte Carlo simulation is the workhorse of derivatives pricing, but it is slow -- pricing a single exotic option might require millions of simulation paths, and computing Greeks via finite differences multiplies that cost by the number of risk factors. Differential ML replaces this with a neural network that, once trained, produces prices and all Greeks in microseconds. The speedup is on the order of 1000x, making real-time risk management of complex portfolios feasible for the first time.
+
+## The Pricing Problem: Why Monte Carlo Is Not Enough
+
+Monte Carlo simulation prices derivatives by simulating thousands of scenarios for the underlying risk factors, computing the payoff in each scenario, and averaging. For a European option, this is straightforward. For exotic derivatives -- barrier options, autocallables, Bermudan swaptions, basket options -- the payoff depends on the entire path of multiple risk factors, and Monte Carlo is often the only viable method.
+
+The problem is Greeks. The delta of an exotic option is the partial derivative of its price with respect to the underlying price. Under finite differences, computing delta requires running the entire Monte Carlo simulation twice (once at S, once at S + dS) and dividing the price difference by dS. For a portfolio with 100 risk factors, computing all first-order Greeks requires 200 Monte Carlo runs. Second-order Greeks (gamma, cross-gamma) require still more. For XVA calculations that need Greeks of Greeks, the computational cost becomes prohibitive.
+
+The convergence rate of Monte Carlo is O(1/sqrt(N)) -- to halve the error, you need four times as many paths. For finite-difference Greeks, the error is compounded: the price noise from Monte Carlo corrupts the derivative estimate, requiring even more paths for stable Greek computation. This is the bottleneck that differential ML was designed to break.
+
+## Automatic Differentiation
+
+**Automatic differentiation (AD)** computes exact derivatives of any computation expressed as a sequence of elementary operations. Unlike finite differences (which are approximate and numerically unstable) and symbolic differentiation (which is exact but impractical for complex programs), AD is both exact and efficient.
+
+**Forward mode AD** propagates derivatives forward through the computation graph. For each input perturbation, you get the derivative of all outputs with respect to that input. Cost: one forward pass per input variable. Efficient when the number of inputs is small relative to the number of outputs.
+
+**Reverse mode AD (backpropagation)** propagates derivatives backward from outputs to inputs. For each output, you get the derivative with respect to all inputs in a single backward pass. Cost: one backward pass per output variable. Efficient when the number of outputs is small relative to the number of inputs.
+
+For derivative pricing, the typical case is one output (the option price) and many inputs (spot prices, volatilities, interest rates, correlations). Reverse mode AD is therefore optimal: a single backward pass through the Monte Carlo simulation computes the price and all Greeks simultaneously, at a cost of roughly 3-5x the cost of computing the price alone. Compare this to finite differences, which require 2N additional forward passes for N risk factors.
+
+The key property of AD is that it computes **exact** derivatives -- not approximations. There is no step-size parameter to tune, no numerical instability from dividing small numbers. The derivatives computed by AD are identical (to machine precision) to the analytical derivatives of the function being differentiated.
+
+## The Key Insight: Training on Prices AND Greeks
+
+The central innovation of differential ML is to train the neural network using both the option price and its derivatives (Greeks) as training labels. A standard neural network for pricing might minimize:
+
+**Loss = Sum_i (NN(x_i) - Price_i)^2**
+
+Differential ML instead minimizes:
+
+**Loss = Sum_i [(NN(x_i) - Price_i)^2 + lambda * Sum_j (d(NN)/dx_j(x_i) - Greek_j_i)^2]**
+
+where the second term penalizes the difference between the neural network's gradient and the true Greeks computed by AD through the Monte Carlo simulation. The hyperparameter lambda controls the relative weight of price accuracy vs. Greek accuracy.
+
+This is called **differential regularization**, and its effect is profound. The derivative information acts as a powerful regularizer that constrains the neural network's function space. Instead of learning an arbitrary function that happens to match prices at the training points, the network must learn a function whose *shape* -- its slopes and curvatures -- matches the true pricing function. This dramatically reduces overfitting and the amount of training data required.
+
+Intuitively, each training sample with N Greeks provides N+1 constraints (one price, N derivatives) rather than just one constraint. A training set of 10,000 samples with 50 risk factors provides 510,000 constraints rather than 10,000 -- a 51x increase in effective training data at no additional simulation cost (since AD computes all Greeks in a single backward pass).
+
+## Architecture and Training
+
+The neural network architecture for differential pricing is straightforward:
+
+**Inputs**: Market parameters -- spot price, volatility, interest rate, time to maturity, correlation, and any other risk factors relevant to the derivative being priced.
+
+**Output**: The option price (and optionally, Greeks as explicit outputs, though these can also be obtained by differentiating the price output with respect to the inputs).
+
+**Hidden layers**: Standard fully-connected layers with smooth activation functions (softplus or ELU rather than ReLU, because ReLU has discontinuous derivatives that corrupt Greek computation).
+
+**Training data generation**: Run a large Monte Carlo simulation with AD to produce training samples (market_params, price, greeks). The market parameters are sampled from a wide distribution covering the range of scenarios the model will encounter in production. This is a one-time computational investment.
+
+**Training process**:
+1. Generate training data: for each sample, draw random market parameters, run Monte Carlo with AD to get price and all Greeks.
+2. Train the neural network on the combined price + Greek loss function.
+3. Validate on held-out test data, checking both price accuracy and Greek accuracy.
+4. Deploy the trained model for real-time inference.
+
+The training phase is expensive (hours to days of GPU time), but inference is cheap (microseconds per evaluation). This is the fundamental tradeoff: shift computation from real-time to offline.
+
+## The Speedup: 1000x Over Monte Carlo
+
+Once trained, the neural network replaces Monte Carlo entirely for pricing and Greeks:
+
+- **Monte Carlo**: Pricing one exotic option takes ~1 second (1 million paths). Computing 50 Greeks by finite differences takes ~100 seconds. Total for a portfolio of 10,000 trades: ~1 million seconds (days).
+- **Differential ML**: Pricing one exotic option with all Greeks takes ~10 microseconds. Total for 10,000 trades: ~0.1 seconds.
+
+The speedup is roughly three orders of magnitude -- 1000x. This makes previously impossible calculations feasible: real-time XVA computation, intraday stress testing, live counterparty credit risk monitoring, and portfolio-wide scenario analysis.
+
+The accuracy is validated by comparing neural network outputs to fresh Monte Carlo estimates on out-of-sample test points. Typical results show relative errors below 0.1% for prices and below 1% for Greeks -- well within the tolerance required for production risk management.
+
+## Applications
+
+**Exotic option pricing**: Autocallables, worst-of options, Himalayan options, and other path-dependent structures that previously required hours of Monte Carlo can be priced in real time.
+
+**XVA computation**: CVA, DVA, and FVA require computing the expected future exposure of an entire portfolio across thousands of scenarios and time steps. This is a nested Monte Carlo problem -- the outer simulation generates scenarios, and the inner simulation prices the portfolio at each scenario. Differential ML eliminates the inner simulation, reducing computation from days to minutes.
+
+**Real-time risk**: Intraday Greeks computation for the entire trading book, enabling continuous risk monitoring rather than end-of-day batch processing.
+
+**Scenario analysis**: What-if analysis across hundreds of stress scenarios, computing full P&L attribution for each, in seconds rather than hours.
+
+## Comparison to Traditional Approaches
+
+**vs. Finite differences**: Finite differences are approximate, numerically unstable for higher-order Greeks, and require 2N+1 simulation runs for N risk factors. AD + differential ML provides exact derivatives at much lower computational cost.
+
+**vs. Analytical approximations**: Closed-form approximations (like Hagan's SABR formula) are fast but limited to specific models and products. Differential ML generalizes to any derivative that can be simulated, regardless of complexity.
+
+**vs. PDE methods**: Finite difference methods for PDEs work well in low dimensions (1-3 risk factors) but suffer from the curse of dimensionality. Differential ML scales to high-dimensional problems naturally because neural networks are universal approximators in any dimension.
+
+**vs. Standard ML (without differential labels)**: Standard neural networks trained only on prices require 10-100x more training data to achieve the same accuracy and produce less stable Greeks because the derivative of the learned function is not constrained.
 
 ## Why This Matters
 
-Traditional derivative pricing relies on Monte Carlo simulation, which is computationally expensive and slow to produce Greeks. Differential ML offers orders-of-magnitude speedup while maintaining accuracy, making it feasible to price and hedge complex portfolios in real time. This is the frontier of quantitative finance computation.
+Traditional derivative pricing relies on Monte Carlo simulation, which is computationally expensive and slow to produce Greeks. Differential ML offers orders-of-magnitude speedup while maintaining accuracy, making it feasible to price and hedge complex portfolios in real time. This is not a theoretical curiosity -- it is being adopted by major banks and funds as the next generation of pricing infrastructure. The combination of automatic differentiation, neural networks, and differential regularization represents the most significant advance in computational finance in the last decade.
 
 ## Key Takeaways
 
-- Automatic differentiation (AD) computes exact derivatives of any computation, not finite-difference approximations
-- Training neural networks with differential labels (price + Greeks) produces far more accurate models
-- The technique generalizes to any derivative that can be simulated, regardless of complexity
-- Speed improvements of 1000x over Monte Carlo are achievable for production pricing
-- Hedging strategies emerge directly from the trained model's sensitivities
+- Automatic differentiation (AD) computes exact derivatives of any computation -- not finite-difference approximations -- at a cost of 3-5x the forward pass.
+- Training neural networks with differential labels (price + Greeks) produces far more accurate models with far less training data than price-only training.
+- Differential regularization constrains the neural network to learn the correct shape (slopes and curvatures) of the pricing function, not just point values.
+- The technique generalizes to any derivative that can be simulated, regardless of model complexity or number of risk factors.
+- Speed improvements of 1000x over Monte Carlo are achievable for production pricing and risk management.
+- Hedging strategies emerge directly from the trained model's sensitivities -- no separate computation needed.
+- Primary applications include exotic option pricing, XVA computation, real-time risk management, and portfolio-wide scenario analysis.
+- Smooth activation functions (softplus, ELU) are required instead of ReLU to ensure well-defined Greek computation through the network.
+
+## Further Reading
+
+- [Quasi-Random Number Generation](/read/quasi-random-number-generation) -- improving the Monte Carlo simulations that generate training data for differential ML
+- [Stochastic Volatility Models](/read/stochastic-volatility-models) -- the Heston and SABR models whose pricing differential ML can accelerate
+- [Model Implementation](/read/model-implementation) -- the production engineering challenges of deploying ML models in trading systems
+- [Derivative Portfolio Management](/read/derivative-portfolio-management) -- the portfolio-level Greeks that differential ML computes in real time
 
 ---
 
-*Full study notes and detailed summaries are being developed. Check back soon.*
+*This is a living document. Contributions welcome via [GitHub](https://github.com/NickNemo17/wyandanch-library).*

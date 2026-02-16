@@ -1,21 +1,135 @@
 ## Overview
 
-Gappy Lecture 2 covers factor models -- the mathematical and economic frameworks used to decompose asset returns into systematic components (factors) and idiosyncratic residuals. The lecture centers on the Fama-French factor model and its extensions, which attribute returns to exposure to market risk (beta), size (SMB -- small minus big), value (HML -- high minus low), profitability, and investment factors. Factor models serve as both explanatory tools (understanding why a portfolio performed the way it did) and constructive tools (building portfolios with desired factor exposures).
+Factor models are the mathematical and economic frameworks used to decompose asset returns into systematic components (factors) and idiosyncratic residuals. They answer the most important question in portfolio management: where did the returns come from? A factor model takes a portfolio's total return and attributes it to exposure to broad market movements, to size, to value, to momentum, to profitability -- and whatever remains unexplained is either alpha (skill) or noise. Every institutional investor, risk manager, and quantitative researcher uses factor decompositions daily, making factor models the lingua franca of modern finance.
 
-The curriculum covers factor construction methodology -- how to define, measure, and build long-short factor portfolios from raw data -- as well as risk decomposition, which breaks down a portfolio's risk into contributions from each factor exposure plus an idiosyncratic component. The lecture also addresses the ongoing debate between risk-based and behavioral explanations for factor premia: are value and momentum premia compensation for bearing systematic risk, or do they arise from persistent investor biases and institutional frictions?
+This lecture traces the evolution from the single-factor Capital Asset Pricing Model through the Fama-French multi-factor extensions that now dominate academic and practitioner finance. Along the way, it covers the mechanics of factor construction -- how academic researchers actually build the long-short portfolios that define each factor -- the distinction between regression-based and characteristic-based factor exposure, the decomposition of portfolio risk into systematic and idiosyncratic components, and the "factor zoo" problem: the troubling proliferation of hundreds of published factors, most of which are unlikely to represent genuine economic phenomena.
+
+## Single-Factor CAPM
+
+The Capital Asset Pricing Model, developed by Sharpe (1964), Lintner (1965), and Mossin (1966), is the simplest factor model. It says that the expected excess return of any asset is proportional to its exposure to a single factor -- the market:
+
+E[r_i] - r_f = beta_i * (E[r_m] - r_f)
+
+Where r_i is the return on asset i, r_f is the risk-free rate, r_m is the market return, and beta_i measures the sensitivity of asset i to the market. Beta is systematic risk -- the risk you cannot diversify away. Assets with higher beta should earn higher expected returns as compensation for bearing more systematic risk.
+
+**Estimating Beta.** Run a time-series regression of excess asset returns on excess market returns:
+
+(r_i,t - r_f,t) = alpha_i + beta_i * (r_m,t - r_f,t) + epsilon_i,t
+
+The slope coefficient is beta. The intercept alpha is the asset's risk-adjusted return -- if CAPM is correct, alpha should be zero for all assets. Persistent, statistically significant alphas are evidence that CAPM is incomplete, which is exactly what researchers found.
+
+**Where CAPM Falls Short.** Empirically, CAPM fails to explain several patterns: small stocks earn higher returns than their betas predict, value stocks (high book-to-market) outperform growth stocks after adjusting for beta, and stocks with recent strong performance continue to outperform. These "anomalies" motivated the multi-factor models that followed.
+
+## Fama-French 3-Factor Model
+
+Fama and French (1993) extended CAPM by adding two factors that capture the size and value anomalies:
+
+r_i,t - r_f,t = alpha_i + beta_i * MKT_t + s_i * SMB_t + h_i * HML_t + epsilon_i,t
+
+**MKT (Market).** The excess return of the broad market over the risk-free rate. Same as CAPM.
+
+**SMB (Small Minus Big).** The return difference between portfolios of small-cap and large-cap stocks. Captures the size premium -- the historical tendency of small stocks to outperform large stocks.
+
+**HML (High Minus Low).** The return difference between portfolios of high book-to-market (value) and low book-to-market (growth) stocks. Captures the value premium.
+
+The 3-factor model explains a substantial portion of the cross-sectional variation in returns that CAPM cannot. A portfolio with positive s_i loading tilts toward small stocks; a portfolio with positive h_i loading tilts toward value stocks. The alpha in this model represents return unexplained by market, size, and value exposures.
+
+## Carhart 4-Factor Model
+
+Carhart (1997) added a momentum factor to the Fama-French 3-factor model:
+
+r_i,t - r_f,t = alpha_i + beta_i * MKT_t + s_i * SMB_t + h_i * HML_t + m_i * UMD_t + epsilon_i,t
+
+**UMD (Up Minus Down).** The return difference between portfolios of recent winners (stocks with high past 12-1 month returns) and recent losers (stocks with low past 12-1 month returns). This captures the momentum premium documented by Jegadeesh and Titman (1993).
+
+The 4-factor model is the workhorse model for mutual fund performance evaluation. When evaluating a fund manager, you regress the fund's excess returns on these four factors. The alpha from this regression measures performance after controlling for market, size, value, and momentum exposures. Most actively managed funds show negative 4-factor alpha -- they do not add value beyond what passive factor exposure would deliver.
+
+## Fama-French 5-Factor Model
+
+Fama and French (2015) extended their model to five factors by adding profitability and investment:
+
+r_i,t - r_f,t = alpha_i + beta_i * MKT_t + s_i * SMB_t + h_i * HML_t + r_i * RMW_t + c_i * CMA_t + epsilon_i,t
+
+**RMW (Robust Minus Weak).** The return difference between portfolios of stocks with high operating profitability and stocks with low operating profitability. Profitable firms earn higher returns, consistent with the idea that the market underprices quality.
+
+**CMA (Conservative Minus Aggressive).** The return difference between portfolios of stocks with low asset growth (conservative investment) and stocks with high asset growth (aggressive investment). Firms that invest conservatively tend to outperform, possibly because aggressive investment signals overconfidence or empire-building by management.
+
+An important finding: in the 5-factor model, the value factor HML becomes largely redundant -- its effect is subsumed by RMW and CMA. This suggests that what we call the "value premium" may really be a profitability and investment premium in disguise.
+
+## Factor Construction Mechanics
+
+Understanding how factors are actually built is essential for using them properly.
+
+**The Sort Procedure.** At each rebalancing date (typically June 30 for annual factors, monthly for momentum):
+
+1. Sort all stocks by the characteristic (e.g., book-to-market ratio).
+2. Divide into groups using breakpoints. Fama and French use NYSE median breakpoints to avoid letting small Nasdaq stocks dominate.
+3. Form value-weighted portfolios within each group.
+4. Compute the factor return as the difference between the long portfolio (high characteristic) and the short portfolio (low characteristic).
+
+**Long-Short Construction.** The factor return is always a long-short spread -- you are buying stocks with high values of the characteristic and selling stocks with low values. This makes the factor approximately market-neutral (zero net investment, zero beta by construction). The long-short structure isolates the premium associated with the characteristic from overall market movements.
+
+**Breakpoints and Rebalancing.** Construction choices matter. Using NYSE breakpoints versus all-stock breakpoints, equal-weighting versus value-weighting, monthly versus annual rebalancing -- each choice affects the factor's return, volatility, turnover, and capacity. Robustness to these construction choices is a basic requirement for any factor claiming to represent a genuine premium.
+
+## Factor Exposure: Regression-Based vs. Characteristic-Based
+
+There are two fundamentally different ways to measure a portfolio's factor exposure.
+
+**Regression-Based (Time-Series).** Regress portfolio returns on factor returns. The regression coefficients (betas, loadings) measure how the portfolio's returns co-move with each factor. This approach captures realized exposure and can detect hidden factor bets that are not apparent from the portfolio's holdings.
+
+**Characteristic-Based (Cross-Sectional).** Compute the weighted average of security characteristics. For example, a portfolio's "value exposure" is the weighted average book-to-market ratio of its holdings. This approach uses current holdings data and tells you what the portfolio looks like today, not how it has behaved historically.
+
+The two approaches can disagree. A portfolio might have high characteristic value exposure (holding cheap stocks) but low regression-based value exposure (because its returns have not correlated with HML recently, perhaps due to stock-specific effects). Practitioners typically use both: characteristic-based for real-time monitoring, regression-based for performance attribution.
+
+## Risk Decomposition: Systematic vs. Idiosyncratic
+
+Factor models decompose total portfolio risk into two components:
+
+**Systematic Risk.** The portion of return variance explained by factor exposures. For a portfolio with factor loadings beta_1, beta_2, ..., beta_k, systematic variance is:
+
+sigma_systematic^2 = beta' * Sigma_F * beta
+
+Where Sigma_F is the covariance matrix of factor returns and beta is the vector of factor loadings.
+
+**Idiosyncratic Risk.** The residual variance not explained by factors. This is the variance of epsilon in the factor regression. Idiosyncratic risk can be diversified away by holding many securities; systematic risk cannot.
+
+Risk decomposition reveals whether a portfolio's risk comes from intended factor bets (which the manager presumably believes will be rewarded) or from unintended concentrations (sector bets, country bets, individual stock bets). A well-constructed factor portfolio should have most of its risk in the intended factors and minimal idiosyncratic exposure.
+
+## The Factor Zoo Problem
+
+Harvey, Liu, and Zhu (2016) catalogued over 300 factors published in academic journals. Cochrane (2011) famously referred to this proliferation as the "factor zoo." The fundamental problem: there are too many factors, and most of them are probably false discoveries.
+
+**Why So Many Factors?** Academic incentives reward novel findings. Researchers are motivated to discover new factors, and journals are motivated to publish them. Data mining across many possible characteristics, time periods, and universes will inevitably produce statistically significant results by chance. Combine this with selective reporting (researchers do not publish null results) and the problem compounds.
+
+**How Many Factors Are Real?** The honest answer is: far fewer than 300. The factors with the strongest theoretical motivation and empirical support are market, size, value, momentum, profitability, and investment -- roughly 5-6. Low volatility and quality/stability factors also have reasonable support. Beyond that, the evidence thins rapidly.
+
+**Statistical Corrections.** Given the number of factors tested across the profession, a newly proposed factor needs a t-statistic of at least 3.0 (Harvey/Liu/Zhu) to overcome the prior that it is likely a false discovery. Many published factors do not clear this bar once you account for the cumulative data mining that preceded their publication.
+
+The factor zoo is both a cautionary tale about data mining and a practical challenge for portfolio managers. Which factors do you include in your risk model? Which factors do you tilt toward? Answering these questions requires moving beyond statistical significance to economic reasoning, out-of-sample validation, and an understanding of why the premium exists and whether it will persist.
 
 ## Why This Matters
 
-Factor models are the lingua franca of modern portfolio management. Every institutional investor, risk manager, and quantitative researcher uses factor decompositions to understand portfolio exposures, attribute performance, and manage risk. Understanding how factors are constructed, what they represent economically, and how to use them in portfolio construction is a non-negotiable skill for working in quantitative finance.
+Factor models are the operating system of modern portfolio management. Performance attribution, risk management, benchmark construction, and strategy evaluation all depend on factor decompositions. A portfolio manager who does not understand factor models cannot explain where returns came from, cannot distinguish skill from style exposure, and cannot manage the risks that actually matter. This lecture provides the conceptual and mechanical foundation for everything in the Gappy series and beyond.
 
 ## Key Takeaways
 
-- Factor models decompose returns into systematic (factor) and idiosyncratic components, enabling precise risk attribution and portfolio analysis.
-- The Fama-French model identifies market, size, value, profitability, and investment as key systematic return drivers.
-- Factor construction requires careful methodology: defining sorts, handling data, managing turnover, and ensuring robustness across time and markets.
-- Risk decomposition reveals whether a portfolio's returns are coming from intended factor bets or unintended exposures.
-- The risk vs. behavioral debate remains unresolved: understanding both perspectives helps practitioners evaluate factor crowding and sustainability of premia.
+- CAPM introduced beta as the single measure of systematic risk. Its empirical failures motivated multi-factor models.
+- The Fama-French 3-factor model (market, size, value) explains cross-sectional return variation that CAPM cannot.
+- Carhart added momentum (UMD) to create the 4-factor model, the standard for fund evaluation.
+- The Fama-French 5-factor model adds profitability (RMW) and investment (CMA), largely subsuming the value factor.
+- Factors are constructed as long-short portfolios using characteristic sorts, breakpoints, and value-weighting.
+- Regression-based exposure measures how returns co-move with factors; characteristic-based exposure describes what the portfolio holds today.
+- Risk decomposes into systematic (factor-driven) and idiosyncratic (diversifiable) components. Good portfolios have risk in intended factor bets, not unintended concentrations.
+- The factor zoo (300+ published factors) is largely a product of data mining. Only a handful of factors have robust empirical and theoretical support.
+
+## Further Reading
+
+- [Gappy Lecture 1: Alpha Research](/read/gappy-lecture-1-alpha-research) -- how to find signals that survive factor adjustment
+- [Gappy Lecture 3: Factor Evaluation](/read/gappy-lecture-3-factor-evaluation) -- how to determine if a factor is real and investable
+- [Systematic Indices](/read/systematic-indices) -- building portfolios from factor exposures
+- [From Theory to Application](/read/theory-to-application) -- the implementation pipeline
+- [Quantitative Foundations](/read/quant-foundations) -- the linear algebra and statistics behind factor regression
 
 ---
 
-*Full study notes and detailed summaries are being developed. Check back soon.*
+*This is a living document. Contributions welcome via [GitHub](https://github.com/NickNemo17/wyandanch-library).*

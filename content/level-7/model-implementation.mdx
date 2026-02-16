@@ -1,21 +1,129 @@
 ## Overview
 
-Model Implementation addresses the engineering and infrastructure challenges of taking quantitative models from research into production trading systems. This module covers the full stack of implementation concerns: numerical methods (interpolation, root-finding, numerical integration, Monte Carlo simulation), software engineering practices for financial systems (code quality, testing, version control, reproducibility), and the architecture of production trading systems (data pipelines, signal generation, order management, execution, and monitoring).
+Model Implementation bridges the gap between quantitative theory and production trading systems. A pricing model that works in a Jupyter notebook is not a production system -- it is a prototype. Taking that prototype to a state where it can price, hedge, and risk-manage a live book of derivatives requires solving problems in numerical methods, software engineering, market-specific domain knowledge, and the business economics of the products being traded. This module covers the full implementation stack: from the Black-Scholes derivation and its Greeks, through physical power and credit markets, to machine learning models running in production.
 
-The curriculum emphasizes that a model is only as good as its implementation. Numerical instabilities, floating-point precision issues, race conditions in concurrent systems, and data pipeline failures can all corrupt the output of an otherwise correct model. The module covers best practices for building robust, maintainable, and auditable systems: unit testing and integration testing for quantitative code, handling missing data and corporate actions, managing model versioning, and designing systems that fail gracefully under adverse conditions. Special attention is given to the latency-accuracy tradeoff in real-time systems and the challenges of running models at scale across large investment universes.
+The curriculum emphasizes that implementation is where most practitioners fail. The mathematics of derivatives pricing is well-documented in textbooks, but the engineering challenges -- numerical stability, calibration speed, data pipeline quality, latency constraints, and the hundred small decisions that determine whether a system works reliably -- are learned almost exclusively on the job. This module aims to compress that learning by walking through the complete implementation chain: derivation, discretization, calibration, deployment, and monitoring.
+
+## The Black-Scholes Derivation: From GBM to Closed Form
+
+The Black-Scholes model begins with the assumption that the underlying asset follows **Geometric Brownian Motion (GBM)**:
+
+**dS = mu * S * dt + sigma * S * dW**
+
+where S is the asset price, mu is the drift, sigma is the volatility, and dW is a Wiener process increment. The key insight is that we can form a riskless portfolio by combining the option with a delta hedge in the underlying.
+
+Applying **Ito's Lemma** to a function V(S, t) of the stock price and time:
+
+**dV = (dV/dt + mu * S * dV/dS + 0.5 * sigma^2 * S^2 * d^2V/dS^2) * dt + sigma * S * dV/dS * dW**
+
+Constructing a portfolio Pi = V - (dV/dS) * S and requiring it to earn the risk-free rate yields the **Black-Scholes PDE**:
+
+**dV/dt + 0.5 * sigma^2 * S^2 * d^2V/dS^2 + r * S * dV/dS - r * V = 0**
+
+Notice that mu -- the expected return of the stock -- has vanished. This is the risk-neutral pricing result: option prices do not depend on the stock's expected return, only on its volatility. Solving this PDE with the boundary condition V(S, T) = max(S - K, 0) for a call option yields the closed-form Black-Scholes formula:
+
+**C = S * N(d1) - K * e^(-rT) * N(d2)**
+
+where d1 = (ln(S/K) + (r + sigma^2/2) * T) / (sigma * sqrt(T)) and d2 = d1 - sigma * sqrt(T).
+
+## The Complete Greeks Taxonomy
+
+Greeks measure the sensitivity of option prices to their inputs. They are the foundation of risk management.
+
+**First-order Greeks:**
+- **Delta (dV/dS)**: sensitivity to underlying price. For a call, delta ranges from 0 to 1. Delta is also the hedge ratio.
+- **Vega (dV/d_sigma)**: sensitivity to implied volatility. Long options have positive vega.
+- **Theta (dV/dt)**: time decay. Long options have negative theta -- you pay for the passage of time.
+- **Rho (dV/dr)**: sensitivity to interest rates. Generally small for short-dated options.
+
+**Second-order Greeks:**
+- **Gamma (d^2V/dS^2)**: rate of change of delta. Gamma is highest for at-the-money, near-expiry options. Gamma is what makes delta hedging expensive -- high gamma means frequent rebalancing.
+- **Vanna (d^2V/dS d_sigma)**: sensitivity of delta to volatility, or equivalently, sensitivity of vega to the underlying price. Critical for understanding how your delta hedge changes when vol moves.
+- **Volga (d^2V/d_sigma^2)**: sensitivity of vega to volatility. Also called vomma. Important for pricing far out-of-the-money options where the smile curvature matters.
+- **Charm (d^2V/dS dt)**: rate of change of delta over time. Also called delta decay. Tells you how your hedge ratio drifts as time passes without any price movement.
+
+**Third-order Greeks** like speed (d^3V/dS^3) and color (d^3V/dS^2 dt) are rarely hedged directly but matter for understanding the stability of gamma and the behavior of exotic structures.
+
+## The Business Economics of Options
+
+Understanding the Greeks is necessary but insufficient. You also need to understand how options desks make money. The business model of a market-making desk rests on three pillars:
+
+**Bid-ask spread**: The desk buys at the bid and sells at the offer. The width of the spread reflects the desk's compensation for inventory risk, adverse selection, and hedging costs.
+
+**Volatility markup**: The desk trades implied volatility. If a desk buys options at 20 vol and hedges dynamically while realized vol comes in at 18, the desk earns the 2-vol spread through theta collection net of gamma hedging costs. The P&L from delta hedging a long gamma position is approximately:
+
+**Daily P&L = 0.5 * Gamma * S^2 * (realized_vol^2 - implied_vol^2) * dt**
+
+**Edge**: The desk's informational or structural advantage in pricing. This might come from better vol surface models, faster calibration, superior hedging algorithms, or simply having a larger inventory of offsetting positions that reduce net risk.
+
+## Physical Power Markets
+
+Electricity markets represent one of the most challenging domains for model implementation because power cannot be economically stored at scale. Prices in markets like AESO (Alberta Electric System Operator) and CAISO (California ISO) can spike from $30/MWh to $1,000/MWh or more in minutes during supply shortfalls.
+
+Key concepts include the **spark spread** -- the profit margin of a gas-fired power plant:
+
+**Spark Spread = Power Price - (Gas Price * Heat Rate)**
+
+The **heat rate** measures the efficiency of a power plant in converting fuel to electricity (in BTU/kWh or GJ/MWh). A lower heat rate means higher efficiency. Power plants are essentially real options on the spark spread -- they run when the spread is positive and shut down when it is negative.
+
+Alternative energy trading introduces additional complexity: wind and solar output are intermittent and weather-dependent, creating forecasting challenges. Battery storage is beginning to change the non-storability assumption, but the economics are still evolving.
+
+## Credit Markets: CDS, Interest Rate Swaps, and Swaptions
+
+**Credit Default Swaps (CDS)** are insurance contracts on credit events. The protection buyer pays a periodic premium (the CDS spread) and receives the loss-given-default if the reference entity defaults. CDS pricing requires modeling the probability of default, recovery rates, and the term structure of credit spreads.
+
+**Interest Rate Swaps** exchange fixed-rate payments for floating-rate payments. The fixed rate (swap rate) is set so that the present value of fixed payments equals the present value of expected floating payments at inception. Swap curves are fundamental to fixed income pricing and are bootstrapped from traded swap rates and futures.
+
+**Swaptions** are options on interest rate swaps. A payer swaption gives the right to enter a swap paying fixed; a receiver swaption gives the right to receive fixed. Swaptions are the primary instrument for expressing views on interest rate volatility.
+
+## The SABR Model for Swaption Pricing
+
+The **SABR model** (Stochastic Alpha Beta Rho) is the market standard for pricing swaptions and interest rate caps/floors. It models the forward rate F and its volatility alpha as correlated stochastic processes:
+
+**dF = alpha * F^beta * dW_1**
+**d_alpha = nu * alpha * dW_2**
+**corr(dW_1, dW_2) = rho**
+
+The four parameters are: alpha (initial volatility level), beta (backbone -- controls the CEV-like behavior, typically fixed at 0.5 or 1.0), rho (correlation between rate and vol -- controls skew), and nu (vol of vol -- controls smile curvature).
+
+Hagan's approximate closed-form formula for implied volatility makes SABR fast enough for real-time calibration, which is why it became the industry standard. Implementation requires calibrating alpha, rho, and nu to observed swaption implied volatilities at each expiry-tenor pair.
+
+## XVA: Valuation Adjustments
+
+Modern derivative pricing requires adjustments beyond the risk-free framework:
+
+- **CVA (Credit Valuation Adjustment)**: the cost of counterparty default risk. CVA = LGD * integral of EE(t) * dPD(t), where EE is expected exposure and PD is the probability of default.
+- **DVA (Debit Valuation Adjustment)**: the benefit from your own default risk. Controversial because you profit from your own deteriorating credit.
+- **FVA (Funding Valuation Adjustment)**: the cost of funding uncollateralized derivatives. Reflects the fact that real institutions borrow at a spread above the risk-free rate.
+
+XVA implementation is computationally demanding because it requires simulating the future value of the entire portfolio across thousands of scenarios and time steps -- a nested Monte Carlo problem that is one of the primary motivations for differential machine learning approaches.
+
+## ML in Production: Case Studies
+
+Machine learning models in production trading systems face challenges absent from academic research: concept drift (market regimes change), survivorship bias in training data, latency constraints, and interpretability requirements from risk management and regulators. Successful implementations typically use ML for specific, well-defined tasks -- volatility surface interpolation, order flow prediction, anomaly detection -- rather than end-to-end price prediction.
 
 ## Why This Matters
 
-The best quantitative research is worthless if it cannot be implemented correctly, reliably, and at scale. Model implementation is where theory meets engineering, and the gap between the two is where most production failures occur. Quantitative practitioners must understand not just the mathematics of their models but also the computational and systems engineering required to run them in a live trading environment. This module provides the practical skills that separate a researcher who writes papers from a practitioner who manages real capital.
+The best quantitative research is worthless if it cannot be implemented correctly, reliably, and at scale. Model implementation is where theory meets engineering, and the gap between the two is where most production failures occur. Understanding the complete chain -- from the Black-Scholes derivation through Greeks computation, market-specific domain knowledge, and production deployment -- is what separates a researcher who writes papers from a practitioner who manages real capital.
 
 ## Key Takeaways
 
-- Numerical methods (interpolation, optimization, Monte Carlo) are the computational workhorses of quantitative finance -- understanding their accuracy and limitations is essential.
-- Software engineering discipline (testing, version control, code review, documentation) is non-negotiable for production trading systems.
-- Data pipeline quality (handling missing data, corporate actions, time zones, market calendars) is a common source of production errors.
-- System architecture must balance latency, throughput, accuracy, and fault tolerance based on the specific requirements of the strategy.
-- Monitoring and alerting are critical: production systems must be designed to detect and respond to failures before they cause financial losses.
+- The Black-Scholes derivation (GBM to Ito's Lemma to PDE to closed form) is the foundational chain of reasoning in derivatives pricing -- understanding each step is non-negotiable.
+- Greeks form a taxonomy of risk sensitivities: first-order (delta, vega, theta, rho), second-order (gamma, vanna, volga, charm), and beyond.
+- Options desks profit from the bid-ask spread, volatility markup, and structural edge -- not from directional bets on the underlying.
+- Physical power markets are uniquely challenging because electricity cannot be stored: prices exhibit extreme spikes and mean reversion.
+- The SABR model is the market standard for swaption pricing, offering fast calibration through Hagan's closed-form approximation.
+- XVA (CVA, DVA, FVA) adjustments are computationally demanding and increasingly important for derivative pricing and risk management.
+- ML in production requires solving engineering problems (latency, drift, interpretability) that do not appear in research notebooks.
+- The P&L of a delta-hedged option position depends on the difference between realized and implied volatility, scaled by gamma.
+
+## Further Reading
+
+- [Derivative Portfolio Management](/read/derivative-portfolio-management) -- managing the Greeks at portfolio level, including gamma scalping and cross-Greek risk
+- [Stochastic Volatility Models](/read/stochastic-volatility-models) -- the Heston and SABR models in full mathematical detail
+- [Differential Machine Learning](/read/differential-machine-learning) -- how to accelerate Monte Carlo pricing and Greeks computation by 1000x
+- [Physical & Financial Commodities](/read/physical-financial-commodities) -- applying these implementation frameworks to commodity-specific markets
 
 ---
 
-*Full study notes and detailed summaries are being developed. Check back soon.*
+*This is a living document. Contributions welcome via [GitHub](https://github.com/NickNemo17/wyandanch-library).*

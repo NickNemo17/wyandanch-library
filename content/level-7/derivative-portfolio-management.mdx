@@ -1,21 +1,151 @@
 ## Overview
 
-Derivative portfolio management is the art and science of running a book of options and other derivative instruments. Unlike a simple equity portfolio, a derivatives book has nonlinear exposure to multiple risk factors — delta, gamma, vega, theta, rho — and managing these "Greeks" simultaneously is what separates competent practitioners from theoretical observers.
+Derivative portfolio management is the art and science of running a book of options and other derivative instruments. Unlike a simple equity portfolio, a derivatives book has nonlinear exposure to multiple risk factors -- delta, gamma, vega, theta, rho -- and managing these Greeks simultaneously is what separates competent practitioners from theoretical observers. A single option position is a textbook problem; a portfolio of hundreds of options across multiple underlyings, expirations, and strikes is a multidimensional risk management challenge that requires both quantitative rigor and practical judgment.
 
-This material covers the practical challenges of options book management: how to think about hedging, when to delta-hedge versus accepting risk, how gamma and vega interact, and the real-world frictions that make textbook hedging strategies impossible to execute perfectly.
+This module covers the complete framework: option payoff structures from vanilla to exotic, the full Greeks taxonomy at the portfolio level, position structures used in practice (spreads, straddles, iron condors, butterflies), the Taylor series expansion framework for understanding P&L attribution, risk measures (VaR and CVaR), break-even realized volatility calculation, gamma scalping mechanics, cross-Greek risk, multi-asset correlation risk, and inventory management with penalty functions. This is the largest and most comprehensive module in the derivatives curriculum because it is where all the theory converges into practice.
+
+## Option Payoff Structures
+
+The building blocks of any derivatives portfolio are the fundamental payoff structures:
+
+**Vanilla options**: A call pays max(S - K, 0) at expiry; a put pays max(K - S, 0). These are the atoms from which all other structures are constructed.
+
+**Digital (binary) options**: Pay a fixed amount if the underlying is above (digital call) or below (digital put) the strike at expiry. Digitals have discontinuous payoffs that create hedging challenges -- delta spikes near the strike at expiry.
+
+**Barrier options**: Knock-in options only become active if the underlying hits a barrier. Knock-out options terminate if the barrier is hit. Barriers reduce option premiums but introduce path dependence and discontinuous Greeks at the barrier level.
+
+**Asian options**: Payoff depends on the average price of the underlying over a period, not the terminal price. Averaging reduces volatility exposure, making Asians cheaper than equivalent vanilla options.
+
+**Lookback options**: Payoff depends on the maximum or minimum price achieved during the option's life. Expensive because they capture the extremes of the path.
+
+Each exotic type introduces specific hedging challenges. Barrier options have gamma and vega that change sign near the barrier. Digital options have infinite gamma at expiry. Asian options have path-dependent Greeks that require simulation to compute. A portfolio manager must understand not just the individual payoff, but how each structure's risk characteristics aggregate with the rest of the book.
+
+## The Complete Greeks at Portfolio Level
+
+For a portfolio of N options, each Greek aggregates across positions:
+
+**Portfolio Delta = Sum(delta_i * quantity_i)**
+
+This is straightforward. But portfolio-level Greeks behave differently from position-level Greeks in important ways. A portfolio can be delta-neutral (sum of deltas equals zero) while having significant gamma exposure. It can be vega-neutral on aggregate while having concentrated vega exposure at specific strikes or expirations.
+
+The second-order Greeks become critical at portfolio level:
+
+**Gamma** tells you how your delta hedge changes when the underlying moves. High positive gamma means your delta moves in your favor -- you become longer as the market rises, shorter as it falls. But high gamma also means high theta: you are paying for that convexity through time decay.
+
+**Vanna** at portfolio level tells you how your delta exposure changes when implied vol changes. This is critical during market stress -- if the market drops and vol spikes simultaneously (as it typically does), vanna exposure can cause your delta hedge to deteriorate rapidly.
+
+**Volga** tells you how your vega exposure changes with vol itself. A portfolio with positive volga benefits from vol-of-vol -- it becomes longer vega as vol rises and shorter as vol falls. This is the Greeks-level expression of the convexity of options on volatility.
+
+## Portfolio P&L: The Taylor Series Framework
+
+The change in portfolio value can be decomposed using a Taylor expansion:
+
+**dP = Delta * dS + 0.5 * Gamma * dS^2 + Vega * d_sigma + Theta * dt + 0.5 * Volga * d_sigma^2 + Vanna * dS * d_sigma + ...**
+
+This expansion is the foundation of P&L attribution. At the end of each day, a portfolio manager can decompose the actual P&L into contributions from each Greek:
+
+- Delta P&L: how much you made/lost from the underlying moving
+- Gamma P&L: the convexity effect -- the difference between your linear delta approximation and the actual nonlinear payoff
+- Vega P&L: how much you made/lost from changes in implied volatility
+- Theta P&L: time decay
+- Cross-term P&L: vanna and volga contributions from correlated moves in spot and vol
+
+Any residual between the Taylor expansion P&L and actual P&L is "unexplained" -- typically from higher-order terms, discrete hedging effects, or model error. A well-managed book should have minimal unexplained P&L.
+
+## VaR vs. CVaR
+
+**Value at Risk (VaR)** answers the question: what is the maximum loss we expect over a given time horizon at a given confidence level? A 1-day 99% VaR of $5 million means we expect to lose no more than $5 million on 99% of trading days.
+
+VaR has a critical flaw: it tells you nothing about the magnitude of losses in the 1% tail. A portfolio could have a $5 million VaR but face potential losses of $50 million or $500 million in extreme scenarios.
+
+**Conditional Value at Risk (CVaR)**, also called Expected Shortfall, addresses this by computing the average loss in the tail beyond the VaR threshold:
+
+**CVaR_alpha = E[Loss | Loss > VaR_alpha]**
+
+CVaR is a coherent risk measure (it satisfies subadditivity, meaning diversification always reduces or maintains risk), whereas VaR is not. For derivatives portfolios with nonlinear exposures, CVaR provides a more honest picture of tail risk.
+
+## Position Structures
+
+Professional options traders use multi-leg structures to express specific views on direction, volatility, and time decay:
+
+**Vertical spreads** (bull call spread, bear put spread): Buy one option, sell another at a different strike, same expiry. These cap both the maximum profit and maximum loss, offering defined-risk exposure.
+
+**Calendar spreads**: Buy a longer-dated option, sell a shorter-dated option at the same strike. Profits from the differential time decay -- the short-dated option decays faster.
+
+**Iron condors**: Short an out-of-the-money call spread and an out-of-the-money put spread simultaneously. Profits if the underlying stays in a range. Maximum profit equals the net premium collected; maximum loss is the width of either spread minus the premium.
+
+**Butterflies**: Buy one call at K1, sell two calls at K2, buy one call at K3 (where K2 = (K1 + K3)/2). Profits if the underlying finishes near the center strike. A butterfly is equivalent to a long straddle financed by a short strangle, or a combination of vertical spreads.
+
+**Straddles and strangles**: A straddle is long a call and put at the same strike -- a pure bet on realized volatility exceeding implied. A strangle is the same idea with different strikes for the call and put, reducing the premium but requiring a larger move to profit.
+
+## Break-Even Realized Volatility
+
+For a delta-hedged long option position, the break-even realized volatility is the level of actual price movement at which your gamma P&L exactly offsets your theta decay. The daily P&L of a delta-hedged position is approximately:
+
+**Daily P&L = 0.5 * Gamma * S^2 * ((actual daily return)^2 - (implied vol)^2 / 252)**
+
+The break-even realized vol is therefore the implied volatility at which you purchased the option. If realized vol exceeds implied vol, your gamma profits exceed your theta costs. If realized vol is below implied, theta wins and you lose.
+
+This is the fundamental equation of volatility trading: you are long gamma, paying theta, and your P&L depends on the gap between realized and implied volatility.
+
+## Gamma Scalping: How Market Makers Profit
+
+Gamma scalping is the dynamic hedging process by which market makers monetize their gamma exposure. The mechanics:
+
+1. Buy an option (or a portfolio of options), obtaining long gamma.
+2. Delta hedge the position.
+3. When the underlying rises, delta increases (because of positive gamma), making you long. Sell shares to re-hedge -- locking in a profit on the shares.
+4. When the underlying falls, delta decreases, making you short. Buy shares to re-hedge -- again locking in a profit.
+5. Each round trip captures a small profit proportional to gamma times the move squared.
+
+The cost of this strategy is theta -- you are paying time decay on the options. Gamma scalping is profitable when realized volatility exceeds the implied volatility embedded in the option's price. Market makers systematically collect a volatility risk premium (the tendency for implied vol to exceed realized vol on average) by selling options and reverse-gamma-scalping -- rebalancing into the move rather than against it.
+
+The optimal rebalancing frequency trades off between capturing more gamma P&L (hedge more often) and paying more transaction costs (each rebalance has a bid-ask spread cost). In practice, most desks use a threshold-based approach: rehedge when delta deviates from neutral by more than a predefined amount.
+
+## Cross-Greek Risk and Multi-Asset Correlation
+
+Real portfolios face risks that single-option analysis misses entirely:
+
+**Cross-Greek risk** arises because Greeks are not independent. A portfolio that is delta-neutral and vega-neutral can still have significant vanna exposure -- if the underlying drops and vol rises simultaneously, the delta hedge breaks down. Stress testing must consider simultaneous moves in multiple risk factors, not just each factor in isolation.
+
+**Multi-asset correlation risk** is critical for any portfolio with options on multiple underlyings. Correlation typically increases during market stress (the "correlation breakdown" that is actually correlation convergence to one). A book of short index vol and long single-stock vol is a correlation trade -- it profits when stocks move idiosyncratically and loses when they all move together. Dispersion trading (selling index options, buying single-stock options) is the canonical expression of this view.
+
+## Inventory Management and Penalty Functions
+
+Market makers accumulate inventory -- net Greek exposures -- as they trade with clients. Inventory management uses penalty functions to control risk:
+
+**Skewed pricing**: When a desk is long gamma, it widens the offer on additional long-gamma trades and tightens the bid, incentivizing flow that reduces inventory.
+
+**Penalty functions**: The desk's pricing engine includes terms that penalize large net exposures:
+
+**Adjusted Price = Theoretical Price - lambda_delta * net_delta - lambda_gamma * net_gamma - lambda_vega * net_vega**
+
+where the lambda terms are penalty coefficients that increase with exposure magnitude. This creates a self-correcting mechanism: as inventory grows in any dimension, the desk's prices automatically shift to attract offsetting flow.
+
+The penalty function approach is related to the Avellaneda-Stoikov framework for optimal market making, where the market maker maximizes expected P&L subject to inventory risk constraints.
 
 ## Why This Matters
 
-Derivatives are central to modern finance — from risk management to structured products to volatility trading. Understanding how to manage a portfolio of options gives you a practitioner's lens on risk that equity-only investors simply don't have. Even if you never run an options book, understanding Greeks sharpens your intuition about convexity, nonlinearity, and the price of insurance.
+Derivatives are central to modern finance -- from risk management to structured products to volatility trading. Understanding how to manage a portfolio of options gives you a practitioner's lens on risk that equity-only investors simply do not have. The Greeks framework, P&L attribution, and position structure analysis covered here are the daily toolkit of every options market maker, volatility trader, and risk manager on the Street.
 
 ## Key Takeaways
 
-- Greeks are not independent — gamma, vega, and theta are deeply interconnected
-- Delta hedging is a dynamic, not static, process with real transaction costs
-- Portfolio-level Greeks can behave very differently from position-level Greeks
-- Vol surface dynamics (skew, term structure) create opportunities and risks that flat-vol models miss
-- Practical hedging is about managing P&L variance, not eliminating all risk
+- Greeks are not independent -- gamma, vega, and theta are deeply interconnected, and second-order Greeks (vanna, volga, charm) drive P&L in ways that first-order analysis misses.
+- The Taylor series expansion decomposes portfolio P&L into contributions from each Greek, enabling precise risk attribution and residual analysis.
+- CVaR (Expected Shortfall) is a more honest risk measure than VaR for derivatives portfolios because it captures the magnitude of tail losses, not just their probability.
+- Break-even realized vol equals the implied vol at which you purchased the option -- the gap between realized and implied drives the P&L of delta-hedged positions.
+- Gamma scalping profits when realized vol exceeds implied vol, with the daily P&L approximately equal to 0.5 * Gamma * S^2 * (realized^2 - implied^2) * dt.
+- Multi-leg structures (spreads, condors, butterflies) allow traders to express precise views on direction, volatility, and time while defining maximum risk.
+- Cross-Greek risk and multi-asset correlation risk are portfolio-level phenomena that single-option analysis cannot capture.
+- Inventory management through penalty functions creates a self-correcting pricing mechanism that incentivizes offsetting flow and controls risk accumulation.
+
+## Further Reading
+
+- [Model Implementation](/read/model-implementation) -- the Black-Scholes derivation, Greeks computation, and production system engineering
+- [Stochastic Volatility Models](/read/stochastic-volatility-models) -- understanding the vol surface dynamics that drive vanna and volga P&L
+- [Market Microstructure & Trading](/read/market-microstructure-trading) -- order book mechanics and execution for options market makers
+- [Physical & Financial Commodities](/read/physical-financial-commodities) -- applying portfolio management frameworks to commodity derivatives
 
 ---
 
-*Full study notes and detailed summaries are being developed. Check back soon.*
+*This is a living document. Contributions welcome via [GitHub](https://github.com/NickNemo17/wyandanch-library).*

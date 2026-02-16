@@ -1,21 +1,106 @@
 ## Overview
 
-Quasi-random (low-discrepancy) sequences provide an alternative to pseudo-random numbers for Monte Carlo simulation. Unlike pseudo-random generators, which inevitably leave gaps and clusters in high-dimensional spaces, quasi-random sequences like Sobol and Halton fill the space more uniformly. The result: faster convergence rates for numerical integration — O(1/N) versus O(1/sqrt(N)) — which translates directly into more accurate pricing with fewer simulation paths.
+Quasi-random (low-discrepancy) sequences provide an alternative to pseudo-random numbers for Monte Carlo simulation that delivers dramatically faster convergence. Unlike pseudo-random generators, which inevitably leave gaps and clusters in high-dimensional spaces, quasi-random sequences like Sobol and Halton fill the space more uniformly. The mathematical result is a convergence rate of O(1/N) versus O(1/sqrt(N)) for standard Monte Carlo -- meaning that to halve the error, you need half as many points instead of four times as many. In derivative pricing, risk computation, and portfolio simulation, this translates directly into either faster computation or higher accuracy for the same computational budget.
 
-This material covers the construction and properties of low-discrepancy sequences, their application to derivative pricing, and the practical considerations for using quasi-Monte Carlo in production systems.
+This material draws on the work of Cambou (EPFL), Hofert, and Lemieux (Waterloo), who demonstrated that adapting copula sampling methods to use quasi-random numbers produces convergence improvements of one to two orders of magnitude over standard Monte Carlo, with particularly dramatic gains for tail risk measures like VaR and Expected Shortfall.
+
+## Why Pseudo-Random Numbers Fall Short
+
+Standard Monte Carlo simulation uses pseudo-random number generators (PRNGs) -- deterministic algorithms that produce sequences approximating the statistical properties of true randomness. PRNGs are fast and well-understood, but they have a fundamental limitation: they are designed to mimic randomness, and randomness inherently clusters and leaves gaps. In one dimension, this is barely noticeable. In 10 or 50 dimensions -- the typical dimensionality of a derivative pricing problem -- the gaps become enormous. A pseudo-random sample of 10,000 points in 20-dimensional space covers a negligible fraction of the unit hypercube, and the coverage is uneven.
+
+The convergence rate of standard Monte Carlo is O(1/sqrt(N)), independent of dimension. This is both a strength (it does not suffer from the curse of dimensionality in the way that grid-based methods do) and a weakness (convergence is slow). To reduce error by a factor of 10, you need 100 times as many samples. For pricing exotic derivatives where each sample requires an expensive path simulation, this cost matters enormously.
+
+## Low-Discrepancy Sequences: Filling Space Efficiently
+
+Quasi-random sequences are designed not to mimic randomness but to fill space as uniformly as possible. The mathematical concept is **discrepancy** -- a measure of how unevenly a point set covers the unit hypercube. Low-discrepancy sequences minimize this measure, ensuring that every region of the space receives approximately its fair share of sample points.
+
+The **Koksma-Hlawka inequality** provides the theoretical foundation:
+
+**Integration Error ≤ V(f) * D*(P_n)**
+
+where V(f) is the total variation of the integrand in the sense of Hardy and Krause, and D*(P_n) is the star discrepancy of the point set. For well-constructed sequences, D* is O((log N)^d / N), giving an integration error of O((log N)^d / N) -- asymptotically much better than the O(1/sqrt(N)) of standard Monte Carlo for moderate dimensions.
+
+### Van der Corput Sequences
+
+The simplest low-discrepancy sequence is the **Van der Corput sequence** in one dimension. It works by digit reversal in a chosen base. In base 2: the first few terms are 1/2, 1/4, 3/4, 1/8, 5/8, 3/8, 7/8, ... Each new point falls in the largest existing gap, systematically filling the unit interval.
+
+### Halton Sequences
+
+The **Halton sequence** extends Van der Corput to multiple dimensions by using different prime bases for each dimension: base 2 for dimension 1, base 3 for dimension 2, base 5 for dimension 3, and so on. This produces a multi-dimensional sequence with good space-filling properties in low dimensions. However, Halton sequences suffer from correlation problems in higher dimensions -- the quality of projections degrades as the prime base increases. For financial applications with more than ~20 dimensions, Halton sequences require scrambling or should be replaced by Sobol sequences.
+
+### Sobol Sequences
+
+**Sobol sequences** are the most widely used low-discrepancy sequences in computational finance. They are constructed using linear transformations over generator matrices in base 2, producing sequences with excellent uniformity properties in high dimensions. The construction depends on a set of direction numbers that determine the quality of the sequence -- good direction numbers (like the Joe-Kuo sets) are critical for high-dimensional applications.
+
+Sobol sequences maintain their space-filling properties well into hundreds of dimensions, though the practical advantage over pseudo-random numbers diminishes as dimension increases beyond roughly 100.
+
+## Randomized Quasi-Monte Carlo (RQMC)
+
+Pure quasi-Monte Carlo has a practical limitation: because the sequences are deterministic, there is no natural way to estimate the error of the approximation. You cannot compute a confidence interval.
+
+**Randomized QMC (RQMC)** solves this by applying a random shift or scramble to the quasi-random sequence while preserving its low-discrepancy properties. The standard approach is to run B independent replications (B = 25 is typically sufficient), each with a different random shift, and use the variance across replications to estimate the error. This gives you the best of both worlds: the fast convergence of QMC and the error estimation capability of standard MC.
+
+RQMC also produces unbiased estimators -- a property that pure QMC lacks -- which is essential for many statistical applications including risk measure estimation.
+
+## Application to Copula Sampling
+
+Financial applications frequently require sampling from copulas -- joint distribution models that capture the dependence structure between multiple risk factors. Cambou, Hofert, and Lemieux showed that quasi-random numbers can be integrated into copula sampling methods with dramatic improvements.
+
+### Conditional Distribution Method (CDM)
+
+The **CDM** maps uniform samples from [0,1]^d to copula samples through sequential conditional quantile inversions. Each dimension is sampled conditionally on the previous dimensions, using the conditional distribution function of the copula. When the input uniforms come from a quasi-random sequence rather than a pseudo-random generator, the resulting copula samples inherit the improved space-filling properties.
+
+For elliptical copulas (Gaussian, Student-t), CDM is equivalent to the stochastic representation approach -- generating correlated normal or t-distributed variables through Cholesky decomposition.
+
+### Marshall-Olkin Method
+
+For **Archimedean copulas** (Clayton, Frank, Gumbel), the Marshall-Olkin algorithm generates samples as:
+
+**U = (psi(E_1/V), ..., psi(E_d/V))**
+
+where psi is the copula generator, E_i are independent exponential variables, and V follows the inverse Laplace-Stieltjes transform of the generator. Substituting quasi-random inputs for the uniform random variables used to generate E and V produces copula samples with improved convergence.
+
+## Empirical Results
+
+Testing on copulas of dimension d = 5, 10, and 20 with both Clayton and Student-t dependence structures, QRNG consistently outperforms PRNG:
+
+- **Convergence rates** of O(N^-1) to O(N^-1.5) for QRNG versus O(N^-0.5) for standard MC -- an improvement of two to three orders of magnitude in the rate.
+- **VaR and Expected Shortfall estimation** shows especially large improvements, because these tail risk measures are particularly sensitive to the quality of sampling in the tails of the distribution.
+- **Practical speedup**: achieving a given level of accuracy requires 10-100x fewer samples with QRNG, translating directly into 10-100x faster computation.
+
+One caveat: the quality of the quasi-random sequence matters critically. Poor Halton projections in high dimensions propagate errors into the copula samples. Verification of sequence quality -- through discrepancy tests and convergence diagnostics -- is essential before production deployment.
+
+## Dimension Reduction Techniques
+
+The benefits of quasi-random methods can be amplified by reducing the effective dimensionality of the problem:
+
+**Brownian bridge construction**: Instead of generating a path of N time steps sequentially (requiring N quasi-random dimensions), the Brownian bridge first generates the terminal value, then the midpoint, then the quarter-points, and so on. This concentrates the most important variation into the first few quasi-random dimensions, where the sequence has the best uniformity properties.
+
+**Principal Component Analysis (PCA)**: Decompose the covariance structure of the simulation into principal components and assign the first (most important) components to the first quasi-random dimensions. This ensures that the dimensions where QMC has the greatest advantage correspond to the directions of greatest variance in the problem.
+
+These techniques can extend the practical advantage of QMC well beyond the 50-100 dimension range where raw Sobol sequences begin to lose their edge.
 
 ## Why This Matters
 
-Monte Carlo simulation is ubiquitous in quantitative finance: pricing exotic derivatives, computing CVA/XVA, risk aggregation, and portfolio simulation. Any improvement in convergence rate directly reduces computation time or improves accuracy. Quasi-random methods offer a free lunch — better results from the same computational budget — but require understanding their quirks.
+Monte Carlo simulation is the computational backbone of quantitative finance: pricing exotic derivatives, computing XVA, stress testing, portfolio simulation, and risk aggregation all rely on it. Quasi-random methods offer a genuine free lunch -- better results from the same computational budget, or the same results from a fraction of the budget. For tail risk measures (VaR, CVaR/ES) where sampling quality in the distributional tails is critical, the improvement is particularly significant. Any quantitative team running large-scale Monte Carlo simulations that has not adopted RQMC is leaving performance on the table.
 
 ## Key Takeaways
 
-- Sobol sequences are the most widely used low-discrepancy sequence in finance applications
-- Convergence improvement over pseudo-random is most dramatic in moderate dimensions (5-50)
-- Randomized quasi-Monte Carlo (RQMC) combines the benefits of both approaches and allows error estimation
-- Dimension reduction techniques (Brownian bridge, PCA) amplify the benefits of quasi-random methods
-- In very high dimensions (>100), the advantage of quasi-random over pseudo-random diminishes
+- Quasi-random (low-discrepancy) sequences fill space more uniformly than pseudo-random numbers, achieving O(1/N) convergence versus O(1/sqrt(N)) for standard Monte Carlo.
+- Sobol sequences are the gold standard for financial applications, maintaining quality in high dimensions far better than Halton sequences.
+- Randomized QMC (RQMC) combines fast convergence with error estimation -- run B=25 replications with random shifts for unbiased estimates with confidence intervals.
+- Copula sampling with quasi-random inputs (CDM for elliptical, Marshall-Olkin for Archimedean) produces convergence improvements of 2-3 orders of magnitude.
+- VaR and Expected Shortfall estimation benefit especially from QRNG because tail sampling quality is critical for these measures.
+- Dimension reduction (Brownian bridge, PCA) amplifies QMC benefits by concentrating important variation in the first quasi-random dimensions.
+- In very high dimensions (>100), the advantage of quasi-random over pseudo-random diminishes, but dimension reduction techniques extend the useful range.
+- Always verify sequence quality -- poor quasi-random projections propagate into downstream samples and can be worse than pseudo-random.
+
+## Further Reading
+
+- [Differential Machine Learning](/read/differential-machine-learning) -- neural network methods that use Monte Carlo training data, where QRNG improves training set quality
+- [Stochastic Volatility Models](/read/stochastic-volatility-models) -- the models whose calibration and pricing QRNG can accelerate
+- [Market Microstructure & Trading](/read/market-microstructure-trading) -- Monte Carlo methods applied to order flow simulation and market impact modeling
 
 ---
 
-*Full study notes and detailed summaries are being developed. Check back soon.*
+*This is a living document. Contributions welcome via [GitHub](https://github.com/NickNemo17/wyandanch-library).*

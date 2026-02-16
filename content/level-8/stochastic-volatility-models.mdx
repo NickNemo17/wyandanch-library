@@ -1,21 +1,134 @@
 ## Overview
 
-Stochastic volatility models extend the Black-Scholes framework by treating volatility itself as a random process. The Black-Scholes model assumes constant volatility, but empirical evidence overwhelmingly shows that volatility changes over time, exhibits clustering, and is correlated with the underlying asset price. Models like Heston (1993) and SABR address these shortcomings.
+Stochastic volatility models extend the Black-Scholes framework by treating volatility itself as a random process. The Black-Scholes model assumes constant volatility, but empirical evidence overwhelmingly shows that volatility changes over time, exhibits clustering, and is correlated with the underlying asset price. The volatility smile and skew observed in option markets are direct evidence that the market prices in non-constant volatility -- and any model that ignores this will misprice options systematically, particularly away from at-the-money strikes and at longer maturities.
 
-This material covers the mathematical foundations of stochastic vol models, their calibration to market data, and the practical challenges of using them for pricing and hedging exotic derivatives. Understanding these models is essential for anyone working with options beyond vanilla calls and puts.
+This module covers the two most important stochastic volatility models in practice: the Heston model (the theoretical workhorse for equity and FX derivatives) and the SABR model (the market standard for interest rate and FX options). We derive the dynamics, interpret each parameter, discuss calibration challenges, compare stochastic vol to local vol (Dupire's equation), and examine the practical implications for hedging -- specifically, the need for vega, vanna, and volga hedging that goes beyond the delta-only framework of Black-Scholes.
+
+## Why Black-Scholes Fails
+
+The Black-Scholes model assumes that the underlying follows Geometric Brownian Motion with constant volatility sigma. Under this assumption, the implied volatility surface should be flat -- every option, regardless of strike or maturity, should have the same implied vol. In reality, observed implied volatility exhibits:
+
+**The smile**: Out-of-the-money puts and calls both have higher implied vol than at-the-money options. This means the market prices in fatter tails than the log-normal distribution predicts.
+
+**The skew (smirk)**: In equity markets, out-of-the-money puts consistently have higher implied vol than out-of-the-money calls. This reflects the market's pricing of downside risk -- the fear premium -- and the empirical fact that volatility increases when stock prices fall.
+
+**The term structure**: Short-dated options tend to have different implied vol levels than long-dated options. After a crisis, short-dated vol is elevated while long-dated vol is more stable.
+
+These patterns are not noise. They are persistent, economically meaningful features of option markets that any serious pricing model must explain. Black-Scholes cannot, which is why stochastic volatility models were developed.
+
+## The Heston Model
+
+The Heston model (1993) is the foundational stochastic volatility model. It models the asset price S and its instantaneous variance v as a pair of correlated diffusions:
+
+**dS = mu * S * dt + sqrt(v) * S * dW_1**
+
+**dv = kappa * (theta - v) * dt + sigma_v * sqrt(v) * dW_2**
+
+**corr(dW_1, dW_2) = rho**
+
+The variance v follows a mean-reverting square-root (CIR) process. The five parameters have clear interpretations:
+
+**kappa (mean reversion speed)**: How quickly variance reverts to its long-run level. High kappa means variance shocks are short-lived. Low kappa means volatility regimes persist. Typical values for equity indices: 1-5 (half-life of weeks to months).
+
+**theta (long-run variance)**: The equilibrium level of variance. If current variance is above theta, the drift pulls it down; if below, it pulls it up. Theta = sigma_long^2, so if you expect long-run volatility of 20%, theta = 0.04.
+
+**sigma_v (vol of vol)**: How volatile the volatility process itself is. Higher sigma_v produces a more curved smile -- more probability mass in the tails. This parameter controls the curvature/convexity of the implied volatility smile.
+
+**rho (correlation)**: The correlation between the asset price and its variance. In equity markets, rho is typically negative (-0.7 to -0.9), reflecting the leverage effect: when stock prices fall, volatility rises. Negative rho produces the characteristic downward-sloping skew in equity implied vol. For FX markets, rho can be positive or negative depending on the currency pair.
+
+**v_0 (initial variance)**: The starting level of variance at time zero. Usually set to match the current short-dated ATM implied volatility.
+
+The Heston model has a semi-analytical solution via characteristic functions, which makes calibration computationally feasible. Option prices are computed through numerical integration of the characteristic function -- faster than Monte Carlo but slower than Black-Scholes' closed form.
+
+The **Feller condition** (2 * kappa * theta > sigma_v^2) ensures that the variance process remains strictly positive. When violated, variance can hit zero, which requires careful numerical handling.
+
+## The SABR Model
+
+The **SABR model** (Stochastic Alpha Beta Rho), introduced by Hagan, Kumar, Lesniewski, and Woodward (2002), is the market standard for pricing interest rate options (caps, floors, swaptions) and FX options. It models the forward rate F and its stochastic volatility alpha:
+
+**dF = alpha * F^beta * dW_1**
+
+**d_alpha = nu * alpha * dW_2**
+
+**corr(dW_1, dW_2) = rho**
+
+The four parameters:
+
+**alpha**: The initial level of volatility. Controls the overall height of the smile.
+
+**beta**: The backbone parameter. Controls the relationship between the forward rate and local volatility. Beta = 1 gives a log-normal model; beta = 0 gives a normal model. In practice, beta is often fixed a priori (commonly 0.5 or chosen to match historical behavior) and the other parameters are calibrated.
+
+**rho**: The correlation between the forward and its volatility. Controls the skew of the smile. Negative rho tilts the smile to favor higher implied vol for lower strikes (downside skew).
+
+**nu**: Vol of vol. Controls the curvature of the smile. Higher nu means a more pronounced smile -- more excess kurtosis.
+
+SABR's key advantage is Hagan's approximate closed-form formula for implied volatility as a function of strike, which makes calibration extremely fast -- fast enough for real-time trading. The formula expresses Black's implied volatility as:
+
+**sigma_B(K) = (alpha / (F*K)^((1-beta)/2)) * (z / x(z)) * [1 + correction terms * T]**
+
+where z and x(z) are functions of the parameters. This speed advantage made SABR the dominant model on rates and FX trading desks, where traders need to recalibrate the smile continuously as the market moves.
+
+## Calibration Challenges
+
+Calibration is the process of finding model parameters that best fit observed market prices. For both Heston and SABR, this is a nonlinear optimization problem:
+
+**min Sum_i (Model_Price(params, K_i, T_i) - Market_Price(K_i, T_i))^2**
+
+Challenges include:
+
+**Non-uniqueness**: Different parameter combinations can produce similar option prices, especially for a limited set of traded strikes. The objective function landscape often has multiple local minima.
+
+**Speed vs. accuracy tradeoff**: Heston requires numerical integration for each option price evaluation, making calibration computationally expensive. SABR's closed-form approximation is fast but becomes inaccurate for extreme strikes and long maturities.
+
+**Smile dynamics**: A model calibrated to today's smile may not correctly predict how the smile will move tomorrow. SABR's smile dynamics (how implied vol changes when the forward moves) are often criticized as unrealistic -- the backbone exponent beta controls these dynamics, and the fixed-beta assumption limits flexibility.
+
+**Cross-sectional vs. time-series fit**: A model that fits the current cross-section of strikes perfectly may have parameters that are unstable over time, producing erratic hedging signals. Practitioners often impose parameter smoothness constraints or use penalty terms that discourage rapid parameter changes.
+
+## Local Vol vs. Stochastic Vol
+
+**Dupire's local volatility model** takes a fundamentally different approach. Instead of making volatility stochastic, it makes volatility a deterministic function of the underlying price and time: sigma(S, t). Dupire showed that there exists a unique local volatility function consistent with any arbitrage-free set of option prices:
+
+**sigma_local(K, T)^2 = (dC/dT + r * K * dC/dK) / (0.5 * K^2 * d^2C/dK^2)**
+
+Local vol perfectly fits the current smile by construction. However, its dynamics are problematic: as the spot price moves, the local vol model predicts that the smile will flatten over time, which contradicts empirical observations. The smile is "sticky strike" in local vol but "sticky delta" in practice.
+
+Stochastic vol models like Heston produce more realistic smile dynamics because the randomness of volatility itself creates persistence in the smile shape as the underlying moves. The tradeoff is that stochastic vol models do not perfectly fit the current smile (they have fewer degrees of freedom) but produce better hedging behavior.
+
+**Stochastic local volatility (SLV)** models combine both approaches -- a stochastic vol component for realistic dynamics and a local vol "leverage function" for exact calibration. SLV models are now the state of the art at major banks for pricing exotic derivatives.
+
+## Hedging Under Stochastic Volatility
+
+Under Black-Scholes with constant vol, delta hedging is sufficient. Under stochastic vol, additional Greeks must be managed:
+
+**Vega hedging**: Since vol is stochastic, the portfolio is exposed to vol moves. Vega hedging requires trading other options to offset this exposure. You cannot hedge vega with the underlying alone -- only with other volatility-sensitive instruments.
+
+**Vanna hedging**: The cross-derivative between delta and vol (d^2V/dS d_sigma). Under stochastic vol, if the underlying drops and vol rises (negative rho), the delta of your option changes not only because of gamma but also because of vanna. Ignoring vanna leads to delta hedge slippage during market stress.
+
+**Volga hedging**: The second derivative of price with respect to vol (d^2V/d_sigma^2). Portfolio convexity in vol space. Positive volga means you benefit from vol-of-vol -- your vega increases as vol rises, providing a natural tail hedge. Pricing exotic options using the "vanna-volga" method adjusts the Black-Scholes price by the cost of vanna and volga hedging, providing a practical market-consistent pricing approach.
+
+In practice, hedging under stochastic vol means maintaining a richer set of hedge instruments: options at multiple strikes and maturities to control vega across the term structure and smile, with dynamic rebalancing as the vol surface moves.
 
 ## Why This Matters
 
-The volatility smile and skew are market realities that constant-vol models cannot explain. Stochastic volatility models provide a principled framework for pricing and hedging in the presence of non-constant vol — which is to say, in all real markets. They are the backbone of modern derivatives pricing at every major bank and fund.
+The volatility smile and skew are market realities that constant-vol models cannot explain. Stochastic volatility models provide a principled framework for pricing and hedging in the presence of non-constant vol -- which is to say, in all real markets. They are the backbone of modern derivatives pricing at every major bank and fund. Whether you are pricing a vanilla swaption, hedging a barrier option, or computing XVA on a portfolio of exotics, stochastic vol models are the foundation on which everything else is built.
 
 ## Key Takeaways
 
-- The Heston model captures mean-reverting stochastic volatility with correlation to the underlying
-- SABR is the market standard for interest rate and FX options, providing an intuitive parameterization of the smile
-- Calibration is the central practical challenge — fitting model parameters to observed market prices
-- The vol-of-vol parameter controls the curvature of the smile; the correlation parameter controls its skew
-- Hedging under stochastic vol requires additional hedge instruments beyond delta (vega, volga, vanna)
+- Black-Scholes fails because it assumes constant volatility, but market option prices exhibit a persistent smile and skew that require stochastic vol models to explain.
+- The Heston model captures mean-reverting stochastic volatility with five interpretable parameters: kappa (reversion speed), theta (long-run variance), sigma_v (vol of vol), rho (spot-vol correlation), and v_0 (initial variance).
+- Negative rho in the Heston model produces the equity skew: volatility rises when prices fall, tilting implied vol higher for downside strikes.
+- The SABR model is the market standard for interest rate and FX options, with Hagan's closed-form approximation enabling real-time calibration.
+- Calibration is a nonlinear optimization problem plagued by non-uniqueness, speed constraints, and the tension between cross-sectional fit and parameter stability.
+- Dupire's local vol model fits today's smile exactly but has unrealistic dynamics; stochastic vol models fit less perfectly but produce better hedging behavior.
+- Hedging under stochastic vol requires managing vega, vanna, and volga -- not just delta -- using a richer set of option hedge instruments.
+- Stochastic local volatility (SLV) models combine the best of both approaches and are the current state of the art for exotic derivative pricing.
+
+## Further Reading
+
+- [Model Implementation](/read/model-implementation) -- the SABR implementation for swaptions and the complete Greeks taxonomy
+- [Derivative Portfolio Management](/read/derivative-portfolio-management) -- managing vanna and volga exposure at the portfolio level
+- [Differential Machine Learning](/read/differential-machine-learning) -- accelerating stochastic vol model calibration and pricing with neural networks
 
 ---
 
-*Full study notes and detailed summaries are being developed. Check back soon.*
+*This is a living document. Contributions welcome via [GitHub](https://github.com/NickNemo17/wyandanch-library).*

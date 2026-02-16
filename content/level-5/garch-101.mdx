@@ -1,21 +1,128 @@
 ## Overview
 
-GARCH 101 introduces the family of Generalized Autoregressive Conditional Heteroskedasticity models, which are among the most important tools in financial econometrics for modeling and forecasting volatility. The module begins with the observation that financial returns exhibit volatility clustering -- periods of high volatility tend to be followed by more high volatility, and calm periods by more calm -- a stylized fact that standard models with constant variance cannot capture. Robert Engle's original ARCH model (1982) and Tim Bollerslev's generalization to GARCH (1986) provide a framework for modeling this time-varying volatility.
+Robert Engle won the 2003 Nobel Prize in Economics for a single insight: volatility is not constant. Look at any chart of daily stock returns and the pattern is obvious -- periods of large moves cluster together, and periods of calm cluster together. This phenomenon, called **volatility clustering**, is one of the most robust stylized facts in all of finance. Yet the standard models of the time (and much of introductory finance even today) assumed constant variance. Engle's ARCH model (1982) and Bollerslev's generalization to GARCH (1986) provided the first rigorous framework for modeling time-varying volatility, and these models remain the workhorse of applied volatility analysis in both academia and industry.
 
-The curriculum covers the specification and estimation of ARCH and GARCH models, extensions including EGARCH (which captures the leverage effect, where negative returns tend to increase volatility more than positive returns of the same magnitude), GJR-GARCH, and multivariate GARCH models for covariance estimation. Practical applications include volatility forecasting for risk management, options pricing with stochastic volatility inputs, and the construction of volatility-targeting strategies. The module emphasizes both the mathematical structure of the models and the practical challenges of estimation, model selection, and out-of-sample performance evaluation.
+This module builds GARCH from the ground up. We start with why constant volatility fails, construct the ARCH model as the natural fix, generalize to GARCH(1,1), interpret the parameters, discuss estimation, explore extensions that capture asymmetry (the leverage effect), and connect everything to practical applications -- Value-at-Risk, options pricing, and volatility forecasting. By the end, you will understand both the mathematics and the economic intuition behind the most important volatility model in finance.
+
+## Why Constant Volatility Is Wrong
+
+The assumption of constant volatility -- `σ² = const` for all time -- is embedded in foundational models like Black-Scholes and basic mean-variance optimization. It is also empirically false.
+
+Plot daily returns for any major stock index and you will observe **volatility clustering**: large returns (positive or negative) tend to be followed by large returns, and small returns tend to be followed by small returns. The VIX index -- which tracks implied volatility on the S&P 500 -- oscillates between 10 and 80, not hovering near a single value. The standard deviation of monthly S&P 500 returns ranges from under 5% annualized during calm periods to over 80% annualized during crises.
+
+Formally, if you compute the autocorrelation of squared returns `ε²_t`, you find strong positive autocorrelation at many lags. Returns themselves show little autocorrelation (consistent with weak-form market efficiency), but the **magnitude** of returns is highly predictable. This means the conditional variance -- the variance of tomorrow's return given today's information -- changes over time, even if the unconditional (long-run average) variance is stable.
+
+Any model that ignores this time-variation will produce risk estimates that are too low during turbulent periods (when you need them most) and too high during calm periods (causing needless conservatism).
+
+## The ARCH Model
+
+Engle's **Autoregressive Conditional Heteroskedasticity** model makes the conditional variance depend on past squared returns. The simplest version, ARCH(1), specifies:
+
+`r_t = μ + ε_t`
+
+`ε_t = σ_t * z_t`, where `z_t ~ N(0, 1)`
+
+`σ²_t = ω + α * ε²_{t-1}`
+
+The return `r_t` has a conditional mean `μ` and an innovation `ε_t` whose variance `σ²_t` depends on the squared innovation from the previous period. When yesterday's return was large (in absolute terms), today's conditional variance increases. When yesterday was calm, today's conditional variance decreases.
+
+The parameters must satisfy `ω > 0` and `α ≥ 0` to ensure the variance is always positive. The unconditional (long-run) variance is `σ² = ω / (1 - α)`, which requires `α < 1` for stationarity.
+
+ARCH(1) captures the basic idea of volatility clustering, but it requires many lags (ARCH(q) with large q) to capture the persistence typically observed in financial data. This motivated Bollerslev's generalization.
+
+## GARCH(1,1): The Workhorse
+
+**Generalized ARCH** adds a lagged conditional variance term, producing a parsimonious model that captures the persistence of volatility with just three parameters:
+
+`σ²_t = ω + α * ε²_{t-1} + β * σ²_{t-1}`
+
+This is the GARCH(1,1) model -- one ARCH lag and one GARCH lag. Despite its simplicity, GARCH(1,1) is sufficient for the vast majority of financial applications. It is to volatility modeling what OLS is to regression: the default starting point.
+
+**Interpreting the parameters:**
+
+- **`ω`** (omega): The constant term. It determines the long-run (unconditional) variance: `σ²_∞ = ω / (1 - α - β)`. A higher `ω` means a higher baseline volatility.
+
+- **`α`** (alpha): The **reaction coefficient**. It controls how much the conditional variance responds to yesterday's shock. High `α` means volatility reacts sharply to new information. Typical equity index values: `α ≈ 0.05 - 0.15`.
+
+- **`β`** (beta): The **persistence coefficient**. It controls how much of yesterday's conditional variance carries forward. High `β` means volatility is "sticky" -- once it is elevated, it stays elevated for a long time. Typical equity index values: `β ≈ 0.80 - 0.95`.
+
+- **`α + β`**: The **persistence sum**. This is the most important diagnostic. When `α + β` is close to 1 (say 0.95-0.99), volatility shocks decay very slowly -- a spike in volatility persists for weeks or months. When `α + β = 1` exactly, you have an **Integrated GARCH (IGARCH)** model where volatility shocks never decay, and the unconditional variance is infinite. For the S&P 500, typical estimates yield `α + β ≈ 0.98 - 0.99`, indicating extremely high persistence.
+
+**Numerical example:** Suppose `ω = 0.00001`, `α = 0.10`, `β = 0.85`. The unconditional variance is `0.00001 / (1 - 0.10 - 0.85) = 0.0002`, corresponding to an annualized volatility of about `√(0.0002 * 252) ≈ 22.4%`. If yesterday's residual was large -- say `ε_{t-1} = 0.03` (a 3% daily shock) -- today's conditional variance is `0.00001 + 0.10 * (0.03)² + 0.85 * 0.0002 = 0.00001 + 0.00009 + 0.00017 = 0.00027`, corresponding to annualized vol of about 26.1%. The model correctly increases its volatility estimate after a large move.
+
+## Estimation: Maximum Likelihood
+
+GARCH parameters are estimated by **maximum likelihood estimation (MLE)**. Given the assumption that `z_t ~ N(0, 1)`, the conditional log-likelihood for observation `t` is:
+
+`l_t = -0.5 * [ln(2π) + ln(σ²_t) + ε²_t / σ²_t]`
+
+The total log-likelihood is `L = Σ l_t`, summed over all observations. The optimizer finds the parameter values `(ω, α, β)` that maximize `L` -- the parameter values under which the observed data was most probable.
+
+In practice, this is a numerical optimization problem (there is no closed-form solution). Standard software uses quasi-Newton methods (BFGS) or other gradient-based optimizers. Constraints (`ω > 0`, `α ≥ 0`, `β ≥ 0`, `α + β < 1`) must be enforced. Starting values matter: poor initial guesses can lead the optimizer to local maxima or boundary solutions.
+
+One practical refinement: financial returns have fatter tails than the normal distribution, even after accounting for time-varying volatility. Using a **Student-t likelihood** instead of a Gaussian likelihood (estimating the degrees of freedom `ν` as an additional parameter) typically improves the fit and produces more accurate tail risk estimates.
+
+## Asymmetric Extensions: The Leverage Effect
+
+GARCH(1,1) treats positive and negative shocks symmetrically -- a +3% day and a -3% day produce the same increase in conditional variance. Empirically, this is wrong. **Negative returns increase volatility more than positive returns of the same magnitude.** This is the **leverage effect**, first documented by Black (1976): as stock prices fall, the firm's debt-to-equity ratio rises, increasing financial leverage and making equity more volatile.
+
+**EGARCH** (Nelson, 1991) -- the Exponential GARCH -- models the log of conditional variance, which automatically ensures positivity and allows asymmetry:
+
+`ln(σ²_t) = ω + α * [|z_{t-1}| - E|z_{t-1}|] + γ * z_{t-1} + β * ln(σ²_{t-1})`
+
+The `γ` parameter captures the asymmetry: when `γ < 0` (the typical finding), negative shocks increase log-variance more than positive shocks.
+
+**GJR-GARCH** (Glosten, Jagannathan, Runkle, 1993) adds an indicator function to the standard GARCH equation:
+
+`σ²_t = ω + α * ε²_{t-1} + γ * ε²_{t-1} * I(ε_{t-1} < 0) + β * σ²_{t-1}`
+
+where `I(ε_{t-1} < 0) = 1` if the previous return was negative, and 0 otherwise. The effective reaction coefficient is `α` for positive shocks and `α + γ` for negative shocks. Typical findings: `γ > 0`, meaning negative shocks have a larger impact -- consistent with the leverage effect.
+
+Both EGARCH and GJR-GARCH consistently outperform symmetric GARCH(1,1) for equity returns. For assets without a strong leverage effect (e.g., some commodities or exchange rates), the symmetric model may suffice.
+
+## Practical Applications
+
+**Value-at-Risk (VaR):** GARCH-based VaR uses the conditional variance forecast rather than a fixed historical volatility. The 1-day, 99% VaR under a GARCH model with Student-t innovations is `VaR = μ + t_{0.01,ν} * σ_t`, where `σ_t` is the GARCH conditional standard deviation and `t_{0.01,ν}` is the 1st percentile of the Student-t distribution. This produces VaR estimates that ratchet up during volatile periods and decline during calm ones -- exactly what a risk manager needs.
+
+**Options Pricing:** The Black-Scholes model assumes constant volatility, but traders observe a volatility smile (implied volatility varies with strike price). GARCH models provide a discrete-time framework for pricing options under time-varying volatility. Duan (1995) developed a GARCH option pricing model where the risk-neutral dynamics account for the time-varying conditional variance. While continuous-time stochastic volatility models (Heston, SABR) are more common in practice, GARCH provides the econometric foundation and a natural estimation approach.
+
+**Volatility Forecasting:** The multi-step-ahead forecast from GARCH(1,1) is:
+
+`E_t[σ²_{t+h}] = σ²_∞ + (α + β)^h * (σ²_t - σ²_∞)`
+
+where `σ²_∞ = ω / (1 - α - β)` is the unconditional variance. The forecast reverts to the unconditional variance at rate `(α + β)^h`. When `α + β = 0.97`, the half-life of a volatility shock is `ln(2) / ln(1/0.97) ≈ 23` trading days -- about one month. This gives concrete economic meaning to the persistence parameter.
+
+## From GARCH to Stochastic Volatility
+
+GARCH is a discrete-time model: it operates on daily (or other fixed-frequency) observations. As the time interval shrinks, GARCH(1,1) converges to a continuous-time stochastic volatility process. Specifically, under appropriate scaling, GARCH(1,1) converges to the **Heston (1993)** model:
+
+`dS = μS dt + √V S dW₁`
+
+`dV = κ(θ - V)dt + σ_v √V dW₂`
+
+where `V` is the instantaneous variance, `κ` is the speed of mean reversion (analogous to `1 - α - β`), `θ` is the long-run variance (analogous to `ω / (1 - α - β)`), and `σ_v` is the vol-of-vol (related to `α`). The Level 8 module on stochastic volatility models picks up where GARCH leaves off, extending this framework to continuous time for derivatives pricing.
 
 ## Why This Matters
 
-Volatility is the central quantity in risk management, derivative pricing, and portfolio construction. Any practitioner who models risk, prices options, or builds strategies that depend on volatility forecasts needs to understand GARCH models and their extensions. These models remain the workhorse of applied volatility modeling in both academia and industry, and understanding their strengths and limitations is essential for credible quantitative work.
+Volatility is the central quantity in risk management, derivative pricing, and portfolio construction. Any practitioner who models risk, prices options, or builds strategies that depend on volatility forecasts needs to understand GARCH models and their extensions. The core insight -- that today's volatility depends on recent shocks and recent volatility -- is both simple and profound. GARCH models remain the most widely used volatility models in applied finance, and understanding their mechanics, estimation, and limitations is non-negotiable for credible quantitative work.
 
 ## Key Takeaways
 
-- Volatility clustering is a universal feature of financial returns: large moves tend to follow large moves, and small moves follow small moves.
-- GARCH models capture this clustering by making conditional variance a function of past squared returns and past conditional variances.
-- The leverage effect (asymmetric response to positive vs. negative shocks) is captured by extensions like EGARCH and GJR-GARCH.
-- GARCH volatility forecasts are widely used in Value-at-Risk calculations, options pricing, and volatility-targeting strategies.
-- Model selection (choosing lag orders, testing for asymmetry, evaluating out-of-sample forecast accuracy) is a critical practical skill.
+- Volatility clustering is universal in financial data: large moves follow large moves, small moves follow small moves. Constant volatility assumptions are empirically wrong.
+- GARCH(1,1) captures this with three parameters: `σ²_t = ω + α * ε²_{t-1} + β * σ²_{t-1}`. It is the default starting point for any volatility modeling exercise.
+- `α` measures how quickly volatility reacts to new shocks; `β` measures how persistent volatility is; `α + β` close to 1 means volatility shocks decay slowly.
+- The leverage effect -- negative returns increase volatility more than positive returns -- is captured by EGARCH and GJR-GARCH, which consistently outperform symmetric GARCH for equities.
+- GARCH parameters are estimated via maximum likelihood; using Student-t innovations instead of Gaussian improves fit for fat-tailed financial data.
+- GARCH-based VaR adapts to current market conditions, producing risk estimates that increase during turbulent periods -- exactly when you need conservatism.
+- Multi-step volatility forecasts revert to the unconditional mean at rate `(α + β)^h`, giving the half-life of volatility shocks concrete economic meaning.
+- GARCH(1,1) converges to the Heston stochastic volatility model in continuous time, providing a bridge to the advanced derivatives pricing models in Level 8.
+
+## Further Reading
+
+- [Quantitative Foundations](/read/quant-foundations) -- probability distributions (especially Student-t and fat tails) and stochastic processes that provide the mathematical context for GARCH
+- [Econometrics & FX](/read/econometrics-and-fx) -- time series fundamentals (stationarity, autocorrelation) and DCC-GARCH for multivariate extensions
+- [Stochastic Volatility Models](/read/stochastic-volatility-models) -- the continuous-time analog of GARCH, including Heston and SABR
+- [Derivative Portfolio Management](/read/derivative-portfolio-management) -- how GARCH volatility forecasts feed into options hedging and Greeks management
 
 ---
-
-*Full study notes and detailed summaries are being developed. Check back soon.*
+*This is a living document. Contributions welcome via [GitHub](https://github.com/NickNemo17/wyandanch-library).*

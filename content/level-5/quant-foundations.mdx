@@ -1,21 +1,109 @@
 ## Overview
 
-Quantitative Foundations covers the essential mathematical toolkit required for modern quantitative finance: linear algebra, probability theory, statistics, and optimization. Drawing on frameworks presented by Boyko and related references, this module builds the mathematical infrastructure that underpins everything from portfolio construction and risk modeling to derivative pricing and algorithmic trading. The emphasis is on developing working fluency with the tools rather than abstract mathematical proof.
+Quantitative finance is applied mathematics. Every pricing model, risk system, and systematic strategy rests on a shared mathematical toolkit: probability distributions that describe how returns behave, linear algebra that organizes portfolios and covariance structures, stochastic processes that model how prices evolve through time, and statistical inference that turns noisy data into actionable beliefs. This module, drawing on frameworks presented by Boyko and related references, builds that toolkit piece by piece with direct application to real problems in finance.
 
-The core areas include matrix operations and eigendecomposition (essential for covariance estimation and principal component analysis), probability distributions and stochastic processes (the language of financial modeling), statistical inference and hypothesis testing (the basis for evaluating any empirical claim about markets), and constrained optimization (the mathematical engine behind mean-variance portfolio theory, risk budgeting, and calibration problems). Each topic is presented with direct application to finance, bridging the gap between textbook mathematics and the real problems that quantitative analysts face daily.
+The goal is not abstract proof but working fluency. A quant who cannot write down a covariance matrix, recognize when a distribution has fat tails, or derive an optimal bet size from first principles is not yet ready for the applied modules that follow. Everything here -- from Bayesian updating to eigenvalue decomposition to the Kelly criterion -- connects directly to portfolio construction, risk management, and strategy design in later levels of this curriculum.
+
+## Probability Distributions: The Shape of Returns
+
+Financial modeling begins with the question: what distribution do returns actually follow? The answer determines every downstream calculation -- risk estimates, option prices, portfolio weights.
+
+**The Normal Distribution** is the starting point. A random variable `X ~ N(μ, σ²)` has probability density `f(x) = (1 / σ√(2π)) * exp(-(x - μ)² / (2σ²))`. The normal distribution is symmetric, fully characterized by its mean and variance, and mathematically convenient. The Central Limit Theorem tells us that sums of independent random variables converge to normality, which is why so many models default to it.
+
+**The Log-Normal Distribution** applies when we model prices rather than returns. If log-returns are normally distributed -- `ln(S_t / S_{t-1}) ~ N(μ, σ²)` -- then the price level `S_t` is log-normally distributed. This ensures prices cannot go negative, which the normal distribution alone does not guarantee.
+
+**The Student-t Distribution** introduces fat tails. Empirical returns exhibit kurtosis far exceeding the normal distribution's value of 3. The t-distribution with `ν` degrees of freedom has density proportional to `(1 + x²/ν)^(-(ν+1)/2)`. As `ν → ∞`, it converges to the normal; for small `ν` (say 3-5), the tails are dramatically heavier. This matters enormously for risk: a model that assumes normality will systematically underestimate the probability of extreme losses. The 2008 crisis produced daily moves that a normal distribution would call 10-sigma events -- essentially impossible. Under a Student-t with 4 degrees of freedom, those same moves are merely unlikely.
+
+**Why fat tails matter in practice:** Value-at-Risk estimated under normality will be breached far more often than its confidence level suggests. Any risk model, hedging strategy, or position sizing rule that ignores fat tails is building on a foundation that will fail exactly when it matters most.
+
+## Bayesian Inference for Finance
+
+Classical (frequentist) statistics treats parameters as fixed and data as random. Bayesian inference inverts this: parameters are random variables with distributions that update as evidence arrives. The core formula is Bayes' theorem:
+
+`P(θ | data) = P(data | θ) * P(θ) / P(data)`
+
+In words: **posterior = (likelihood x prior) / evidence**. The prior `P(θ)` encodes what you believe before seeing data. The likelihood `P(data | θ)` measures how probable the observed data is under each possible parameter value. The posterior `P(θ | data)` is your updated belief after seeing the data.
+
+In finance, this framework is powerful. Suppose you believe a strategy's true Sharpe ratio is around 0.5 (your prior). You run a backtest and observe data (the likelihood). The posterior combines both, weighting the prior more heavily when data is scarce and the data more heavily as the sample grows. This naturally guards against overfitting: extraordinary backtest results get pulled back toward your prior expectations.
+
+Bayesian methods also handle regime changes gracefully. By specifying priors that allow parameter values to shift over time, you build models that adapt to new market conditions rather than assuming the future will look exactly like the past.
+
+## The Kelly Criterion: Optimal Bet Sizing
+
+How much of your capital should you allocate to a given opportunity? The Kelly criterion, derived by John Kelly at Bell Labs in 1956, answers this by maximizing the expected logarithmic growth rate of wealth.
+
+For a simple binary bet with probability `p` of winning and payout odds of `b` to 1, the Kelly fraction is:
+
+`f* = (bp - q) / b`
+
+where `q = 1 - p` is the probability of losing. Equivalently, `f* = edge / odds`, where edge is `bp - q` (your expected profit per dollar wagered) and odds is `b`.
+
+**Example:** You find a trade with 55% win probability and 1:1 payout. Kelly says `f* = (1 * 0.55 - 0.45) / 1 = 0.10`. Bet 10% of your capital each time.
+
+In practice, full Kelly is aggressive. The growth rate curve is steep on the over-betting side -- betting 2x Kelly produces the same long-run growth as betting zero, but with enormous volatility. Most practitioners use **half-Kelly** (`f*/2`) or fractional Kelly, sacrificing a small amount of expected growth for a large reduction in drawdown risk. Half-Kelly achieves 75% of the full Kelly growth rate with roughly half the volatility.
+
+For a continuous portfolio with normally distributed returns, Kelly generalizes to: `f* = μ / σ²`, where `μ` is the expected excess return and `σ²` is the variance. This directly connects position sizing to the Sharpe ratio.
+
+## Linear Algebra for Portfolios
+
+A portfolio of `n` assets is a vector of weights `w = [w₁, w₂, ..., wₙ]ᵀ`. The expected return and variance of the portfolio are:
+
+`E[r_p] = wᵀμ`
+
+`Var(r_p) = wᵀΣw`
+
+where `μ` is the vector of expected returns and `Σ` is the `n x n` covariance matrix. The covariance matrix is symmetric and (in theory) positive semi-definite, meaning `wᵀΣw ≥ 0` for all weight vectors. If it is not positive semi-definite, you have an estimation problem.
+
+**Eigenvalue decomposition** reveals the structure hidden in `Σ`. Decomposing `Σ = QΛQᵀ`, where `Q` is the matrix of eigenvectors and `Λ` is the diagonal matrix of eigenvalues, gives you the principal components of risk. The eigenvector with the largest eigenvalue is the direction of maximum variance in the portfolio space -- often interpretable as "market risk." The second eigenvector is the orthogonal direction of next-highest variance -- often a sector or style tilt.
+
+**Principal Component Analysis (PCA)** exploits this decomposition. In equity markets, the first 3-5 principal components typically explain 50-70% of total variance across hundreds of stocks. This dimensionality reduction is essential for building tractable risk models: instead of estimating thousands of pairwise correlations, you model a handful of factors.
+
+The practical challenge is that sample covariance matrices estimated from historical data are noisy, especially when the number of assets `n` is large relative to the number of time periods `T`. Techniques like shrinkage estimators (Ledoit-Wolf) and random matrix theory help produce more stable and invertible covariance estimates.
+
+## Stochastic Processes: Modeling Price Dynamics
+
+Financial models require a mathematical description of how prices evolve through continuous time.
+
+**Geometric Brownian Motion (GBM)** is the foundational model: `dS = μS dt + σS dW`, where `S` is the asset price, `μ` is the drift, `σ` is the volatility, and `dW` is a Wiener process increment (a normally distributed random shock with mean 0 and variance `dt`). GBM ensures prices are always positive and produces log-normally distributed prices. It underpins the Black-Scholes option pricing formula.
+
+**Ornstein-Uhlenbeck (OU) process** models mean reversion: `dX = θ(μ - X)dt + σ dW`. Here, `θ` controls the speed of mean reversion -- how quickly the process is pulled back toward its long-run mean `μ`. This is the natural model for interest rate spreads, pairs trading residuals, and any quantity believed to revert to equilibrium. The key parameter is the half-life of mean reversion: `t_{1/2} = ln(2) / θ`.
+
+**Jump-diffusion models** (Merton, 1976) add discontinuous jumps to GBM: `dS/S = μ dt + σ dW + J dN`, where `dN` is a Poisson process (random arrival of jumps) and `J` is the jump size. This captures the empirical reality that markets do not move smoothly -- earnings announcements, geopolitical shocks, and liquidity crises produce sudden, large price changes that pure diffusion models cannot replicate.
+
+## Performance Metrics: Measuring What Matters
+
+Raw returns are insufficient for evaluating strategies. Risk-adjusted metrics allow apples-to-apples comparison.
+
+**Sharpe Ratio** = `(R_p - R_f) / σ_p` -- excess return per unit of total volatility. The most widely used metric, but it penalizes upside and downside volatility equally.
+
+**Sortino Ratio** = `(R_p - R_f) / σ_downside` -- replaces total volatility with downside deviation (volatility computed only from returns below a threshold). This addresses the Sharpe ratio's weakness: investors care about losses, not gains.
+
+**Calmar Ratio** = `Annualized Return / Maximum Drawdown` -- directly measures return relative to the worst peak-to-trough decline. Particularly relevant for strategies where drawdown is the binding constraint.
+
+**Maximum Drawdown** is the largest cumulative loss from a peak to a subsequent trough. It answers the question every allocator asks: "How much could I have lost?" A strategy with a 40% max drawdown needs a 67% gain just to recover.
+
+**VaR (Value-at-Risk)** estimates the loss threshold at a given confidence level: "The 1-day 99% VaR is $1M" means there is a 1% probability of losing more than $1M in a day. **CVaR (Conditional VaR)**, also called Expected Shortfall, answers the harder question: "Given that we exceed the VaR threshold, what is the expected loss?" CVaR is always larger than VaR and better captures tail risk. For a normal distribution, the 99% CVaR is approximately 2.67σ versus 2.33σ for VaR.
 
 ## Why This Matters
 
-Quantitative finance is built on mathematical foundations. Without fluency in linear algebra, probability, and optimization, a practitioner cannot meaningfully engage with portfolio theory, risk models, factor analysis, or derivative pricing. These tools are not optional -- they are the prerequisite for every quantitative module that follows in this curriculum. Building strong foundations here prevents the dangerous practice of applying sophisticated models without understanding their assumptions and limitations.
+Quantitative finance is built on mathematical foundations. Without fluency in linear algebra, probability, and stochastic calculus, a practitioner cannot meaningfully engage with portfolio theory, risk models, factor analysis, or derivative pricing. These tools are not optional -- they are the prerequisite for every quantitative module that follows in this curriculum. Building strong foundations here prevents the dangerous practice of applying sophisticated models without understanding their assumptions and limitations.
 
 ## Key Takeaways
 
-- Linear algebra (matrices, eigenvalues, decompositions) is the language of portfolio optimization, PCA, and covariance estimation.
-- Probability theory and stochastic processes provide the framework for modeling uncertainty, returns, and asset price dynamics.
-- Statistical inference and hypothesis testing are essential for evaluating whether patterns in financial data are real or spurious.
-- Optimization (convex, constrained, numerical methods) is the engine behind portfolio construction, risk budgeting, and model calibration.
-- Mathematical fluency enables critical evaluation of quantitative models rather than blind application.
+- Financial returns have fat tails -- the normal distribution underestimates extreme events, and the Student-t distribution with low degrees of freedom is a more realistic starting point for risk modeling.
+- Bayesian inference provides a principled framework for updating beliefs with data, naturally guarding against overfitting and adapting to regime changes.
+- The Kelly criterion gives the mathematically optimal bet size (`f* = edge / odds`), but practitioners use half-Kelly to trade a small amount of growth for a large reduction in drawdown risk.
+- Portfolio return is `wᵀμ` and portfolio variance is `wᵀΣw` -- linear algebra and covariance estimation are the language of portfolio construction.
+- Eigenvalue decomposition and PCA reduce the dimensionality of risk, revealing the dominant factors that drive portfolio variance.
+- GBM models trending prices, Ornstein-Uhlenbeck models mean-reverting quantities, and jump-diffusion captures the discontinuous moves that pure diffusion misses.
+- Sharpe ratio is the default performance metric, but Sortino, Calmar, and CVaR provide more nuanced views of risk that better align with how investors actually experience losses.
+
+## Further Reading
+
+- [Econometrics & FX](/read/econometrics-and-fx) -- applying these mathematical tools to time series data and currency markets
+- [GARCH 101](/read/garch-101) -- volatility modeling as a direct application of conditional distributions and maximum likelihood estimation
+- [Alpha Research (Gappy Lecture 1)](/read/gappy-lecture-1-alpha-research) -- how the information coefficient and fundamental law connect to these statistical foundations
+- [Stochastic Volatility Models](/read/stochastic-volatility-models) -- extending GBM and connecting to GARCH at the continuous-time level
 
 ---
-
-*Full study notes and detailed summaries are being developed. Check back soon.*
+*This is a living document. Contributions welcome via [GitHub](https://github.com/NickNemo17/wyandanch-library).*

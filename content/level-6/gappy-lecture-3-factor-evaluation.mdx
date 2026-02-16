@@ -1,21 +1,131 @@
 ## Overview
 
-Gappy Lecture 3 addresses factor evaluation -- the rigorous assessment of whether a factor is genuinely predictive of returns or merely a statistical artifact. This is arguably the most critical step in quantitative research, because the vast majority of "discovered" factors fail to hold up under scrutiny. The lecture provides a systematic framework for evaluating factor robustness, statistical significance, economic rationale, and susceptibility to crowding and decay.
+Factor evaluation is the rigorous assessment of whether a factor is genuinely predictive of returns or merely a statistical artifact. This is arguably the most critical step in quantitative research, because the vast majority of "discovered" factors fail to hold up under scrutiny. Of the 300+ factors catalogued in the academic literature, most do not survive out-of-sample testing, and even fewer can be profitably traded after accounting for transaction costs, capacity constraints, and crowding. The ability to separate real premia from data-mined noise is the skill that distinguishes competent quantitative researchers from the crowd.
 
-Key topics include statistical significance testing (t-statistics, Bonferroni corrections, false discovery rate control), robustness checks (stability across subperiods, geographies, and market regimes), the replication crisis in empirical finance (many published factors do not survive out-of-sample), and the practical challenges of factor crowding -- when too many investors pursue the same factor, its returns degrade and its drawdowns deepen. The lecture also covers factor timing (can you predict when a factor will perform well or poorly?) and the decay of alpha (how quickly does a signal lose its predictive power after discovery?).
+This lecture provides a systematic framework for factor evaluation: statistical significance thresholds calibrated for the modern era of data mining, the requirement for economic rationale, robustness testing across subperiods and geographies, out-of-sample validation, implementation considerations including capacity and turnover, the dynamics of factor crowding, the FLAM framework for organizing evaluation, the critical distinction between alpha and beta, and the (mostly futile) art of factor timing. Each test serves as a filter, and a factor must survive all of them -- not just the ones that are convenient.
+
+## Statistical Significance: The t > 3 Rule
+
+The traditional threshold for statistical significance -- a t-statistic of 2.0, corresponding to a p-value of 0.05 -- is badly inadequate for evaluating factors in finance. The reason is multiple testing: hundreds of researchers have tested thousands of potential factors on the same datasets over decades. Even under the null hypothesis of no genuine effect, this volume of testing will produce many spuriously significant results.
+
+Harvey, Liu, and Zhu (2016) demonstrated that accounting for the cumulative multiple testing across the finance profession requires a minimum t-statistic of approximately 3.0 for a newly proposed factor. This corresponds roughly to a p-value of 0.003 -- far more demanding than the traditional 5% threshold. Their logic: if 300 factors have been tested, the Bonferroni-adjusted significance level for the family of tests is 0.05/300 = 0.000167, which requires t-stats well above 3.0.
+
+In practice, this means that many "significant" factors published before 2016 would not pass the updated threshold. A factor with a t-statistic of 2.5 is not necessarily worthless, but it should be treated with healthy skepticism -- the prior probability that it is a false discovery is uncomfortably high. The bar for genuine discovery is higher than most textbooks suggest.
+
+## Economic Rationale: Risk-Based vs. Behavioral Explanations
+
+Statistical significance is necessary but not sufficient. A factor should also have a plausible economic explanation for why the premium exists and why it should persist. There are two broad categories of explanation.
+
+**Risk-Based Explanations.** The premium is compensation for bearing a genuine economic risk. Value stocks earn higher returns because they are riskier -- they tend to be distressed, financially fragile companies that suffer disproportionately in recessions. Investors demand a premium for holding them. Under this view, the premium is durable because the underlying risk is real. It may fluctuate with the economic cycle, but it will not be arbitraged away because earning it requires bearing genuine risk.
+
+**Behavioral Explanations.** The premium arises from persistent investor biases or institutional frictions. Momentum, for example, may exist because investors underreact to new information (anchoring, slow diffusion of news) and then overreact as trends become obvious (herding, extrapolation). Under this view, the premium is vulnerable to crowding and could shrink as more investors become aware of it, but it persists because the underlying behavioral biases are deeply rooted in human psychology and institutional incentives.
+
+A factor with no plausible economic rationale -- one that is purely a statistical pattern with no story about risk or behavior -- should be treated as a likely false discovery, regardless of its t-statistic. If you cannot explain why the premium exists, you cannot predict whether it will persist.
+
+## Out-of-Sample Testing
+
+The single most important validation test is out-of-sample performance. A factor discovered in U.S. equity data from 1963-2000 should also work in:
+
+**Temporal Out-of-Sample.** Does the factor work in data from after the discovery period? McLean and Pontiff (2016) found that factor premia decline by about 32% after academic publication, but they do not disappear entirely for the robust factors. If a factor was discovered in data ending in 2000, test it on 2001-2025.
+
+**Geographic Out-of-Sample.** Does the factor work in international markets? A value premium discovered in U.S. data should also appear in European, Japanese, and emerging market data. If it is purely a U.S. phenomenon, the economic rationale is weaker and the risk of data mining is higher.
+
+**Asset Class Out-of-Sample.** Momentum was originally documented in equities but has since been found in bonds, currencies, commodities, and even individual stock options. Factors that work across asset classes are far more likely to reflect genuine economic phenomena.
+
+A factor that only works in the specific dataset where it was discovered is almost certainly overfitted to that data.
+
+## Robustness Checks
+
+Beyond out-of-sample testing, a factor must survive a battery of robustness tests.
+
+**Subperiod Analysis.** Does the factor perform consistently across different decades? A factor that delivered strong returns in the 1970s-1980s but has been flat since the 1990s may represent a premium that has been arbitraged away or a regime-specific anomaly.
+
+**Alternative Definitions.** The value premium should appear whether you measure value by book-to-market, earnings yield, cash flow yield, or dividend yield. If the factor is sensitive to the exact definition used, it is fragile and likely overfitted to one specific implementation.
+
+**Construction Sensitivity.** Does performance survive changes to breakpoints (terciles vs. quintiles vs. deciles), weighting schemes (equal-weight vs. value-weight), rebalancing frequency (monthly vs. quarterly vs. annually), and universe definition (all stocks vs. large-cap only)? Robust factors are insensitive to reasonable variations in construction methodology.
+
+**Exclusion of Microcaps.** Many published anomalies are concentrated in the smallest, most illiquid stocks -- stocks that are essentially untradeable at institutional scale. Removing microcaps (stocks below the 20th percentile of NYSE market cap) often eliminates the anomaly entirely. A factor that only exists in microcaps is not investable.
+
+## Factor Crowding
+
+Factor crowding occurs when too much capital pursues the same systematic strategy. The consequences are severe and well-documented.
+
+**Return Compression.** When many investors buy the same "cheap" stocks and short the same "expensive" stocks, the cheap stocks become less cheap and the expensive stocks become less expensive. The valuation spread narrows, and the prospective premium shrinks.
+
+**Drawdown Amplification.** Crowded positions unwind simultaneously during stress. The quant equity crisis of August 2007 is the canonical example: highly correlated factor-based strategies experienced massive simultaneous drawdowns as multiple funds deleveraged at the same time. The losses far exceeded what any individual fund's risk model predicted, because the models did not account for the correlation created by crowding.
+
+**Detecting Crowding.** There is no perfect measure, but useful indicators include: short interest concentration in the factor's short leg, the valuation spread between long and short portfolios (narrower spread = more crowded), the correlation of returns across funds known to use similar strategies, and the speed of factor reversion after drawdowns (crowded factors snap back faster as short-term liquidity providers step in).
+
+**The Crowding Paradox.** Crowding can be self-correcting: as returns deteriorate, capital flows out, the factor becomes less crowded, and returns eventually recover. But the drawdown required to shake out crowded capital can be severe enough to destroy funds that lack the staying power to wait.
+
+## Implementation Considerations
+
+A factor can be statistically significant, economically motivated, and robust -- and still unprofitable after implementation costs.
+
+**Capacity.** How much capital can be deployed in the strategy before market impact erodes returns? Factors concentrated in small, illiquid stocks have lower capacity. The size factor (SMB) has notoriously poor capacity because the small-cap leg is difficult to trade in size.
+
+**Turnover.** How frequently do positions need to be rebalanced? Momentum is a high-turnover factor (monthly rebalancing), while value is low-turnover (annual rebalancing). Higher turnover means higher transaction costs, which directly reduce net returns.
+
+**Transaction Costs.** The gross factor premium must exceed round-trip transaction costs (commissions, bid-ask spreads, market impact) to be profitable. A factor with a gross premium of 3% annually and turnover-implied costs of 4% annually is a net loser. Novy-Marx and Velikov (2016) showed that many published anomalies are unprofitable after realistic transaction costs.
+
+**Short-Leg Costs.** Long-short factors require shorting stocks, which incurs borrowing costs, recall risk, and short-squeeze risk. The short leg of many factors (the "loser" stocks in momentum, the "junk" stocks in quality) is often the most difficult and expensive to implement. Long-only implementations capture only the long-leg premium, which is typically smaller but cheaper to harvest.
+
+## The FLAM Framework
+
+The FLAM framework provides a structured checklist for factor evaluation:
+
+**F - Factor.** Is the factor clearly and precisely defined? Can it be replicated by an independent researcher using the published methodology?
+
+**L - Loading.** Are the factor loadings (exposures) stable over time, or do they drift? Are they economically meaningful, or are they artifacts of specific sample construction choices?
+
+**A - Alpha.** Does the factor deliver alpha after controlling for other known factors? A "new" factor that is fully explained by existing factors (market, size, value, momentum, profitability, investment) adds no new information.
+
+**M - Model.** Is the factor robust to the choice of benchmark model? A factor that shows alpha relative to CAPM but none relative to the 5-factor model is not generating genuine alpha -- it is repackaging known factor exposures.
+
+## Distinguishing Alpha from Beta
+
+This is perhaps the most practically important skill in factor evaluation. Beta is systematic factor exposure that can be obtained cheaply through passive indices or smart-beta products. Alpha is genuine excess return beyond all known factor exposures.
+
+A fund manager who claims to generate alpha but whose returns are fully explained by value and momentum factor exposure is selling beta at alpha prices. The test is straightforward: regress the manager's returns on a comprehensive set of factor returns. If the intercept (alpha) is zero and the factor loadings explain all the variation, there is no alpha -- just factor beta.
+
+The practical implication: before paying active management fees, verify that the performance cannot be replicated more cheaply with passive factor exposure. This analysis is the single most powerful tool for evaluating investment managers and strategies.
+
+## Factor Timing: Mostly Don't Try
+
+Factor timing -- predicting when a factor will perform well and rotating into it -- is appealing in theory but largely fails in practice.
+
+**The Evidence.** Asness, Chandra, Ilmanen, and Israel (2017) found that simple valuation-based factor timing signals (e.g., buying value when the value spread is wide) have very weak predictive power. The problem is that factors can remain "cheap" or "expensive" for years, and the timing signal has a half-life measured in years, not months -- too slow for most investors' horizons and too noisy for reliable implementation.
+
+**Why It Fails.** Factor returns are driven by macroeconomic forces, investor behavior, and structural market changes that are inherently difficult to predict. The same skills that make factor timing attractive (the ability to process complex information about regimes and relative valuations) also make it a prime candidate for overfitting.
+
+**The Exception.** The one area where factor timing has moderate support is avoiding extreme factor dislocation events -- dramatically reducing exposure when a factor becomes severely overcrowded or when macro conditions become hostile (e.g., reducing momentum exposure during sharp market reversals). This is less "timing" and more "risk management."
+
+The consensus among practitioners: maintain diversified, relatively stable factor exposures and resist the temptation to time. The long-term premia from holding factors persistently are more reliable than the incremental returns from trying to predict when each factor will outperform.
 
 ## Why This Matters
 
-The proliferation of published factors (the "factor zoo") has created a crisis of credibility in empirical finance. Hundreds of factors have been documented in academic papers, but only a small fraction are economically meaningful and robust enough to trade. The ability to critically evaluate factors -- separating genuine premia from data-mined noise -- is essential for any quantitative researcher or allocator evaluating systematic strategies.
+The proliferation of published factors has created a crisis of credibility in empirical finance. Hundreds of factors have been documented, but only a small fraction are economically meaningful and robust enough to trade profitably. The ability to critically evaluate factors -- applying the statistical, economic, and practical filters described in this lecture -- is essential for any quantitative researcher or allocator. Without this discipline, you are not investing in factors; you are investing in data-mining artifacts dressed up as financial science.
 
 ## Key Takeaways
 
-- Statistical significance is necessary but not sufficient: a factor must also have economic rationale and survive robustness tests.
-- The factor zoo problem: hundreds of published factors, most of which are likely false discoveries driven by data mining.
-- Robustness testing includes subperiod analysis, out-of-sample testing, cross-country validation, and sensitivity to construction choices.
-- Factor crowding degrades returns and increases drawdowns -- understanding capacity constraints and investor positioning is critical.
-- Alpha decay means that even genuine signals lose predictive power over time as markets adapt; continuous research and refinement are necessary.
+- A t-statistic of 3.0 or higher is the modern threshold for factor significance, accounting for cumulative multiple testing across the profession (Harvey/Liu/Zhu).
+- Economic rationale is non-negotiable: risk-based explanations suggest durable premia; behavioral explanations suggest premia that persist but may decay with crowding.
+- Out-of-sample testing (temporal, geographic, cross-asset) is the most powerful filter for separating genuine factors from overfitted discoveries.
+- Robustness checks -- subperiod analysis, alternative definitions, construction sensitivity, microcap exclusion -- must all be passed.
+- Factor crowding compresses returns and amplifies drawdowns. Monitoring crowding indicators is essential for risk management.
+- Implementation costs (capacity, turnover, transaction costs, shorting costs) determine whether a statistically significant factor is actually profitable.
+- The FLAM framework (Factor, Loading, Alpha, Model) provides a structured checklist for comprehensive evaluation.
+- Most "alpha" is really repackaged factor beta. Regress returns on a comprehensive factor set before concluding that genuine alpha exists.
+- Factor timing mostly does not work. Maintain diversified, stable factor exposures rather than trying to predict when each factor will outperform.
+
+## Further Reading
+
+- [Gappy Lecture 1: Alpha Research](/read/gappy-lecture-1-alpha-research) -- the signal construction and testing pipeline
+- [Gappy Lecture 2: Factor Models](/read/gappy-lecture-2-factor-models) -- the factor frameworks this lecture evaluates
+- [Systematic Indices](/read/systematic-indices) -- portfolio construction and performance evaluation
+- [From Theory to Application](/read/theory-to-application) -- backtesting methodology and implementation
+- [Quantitative Foundations](/read/quant-foundations) -- the statistical foundations for hypothesis testing
 
 ---
 
-*Full study notes and detailed summaries are being developed. Check back soon.*
+*This is a living document. Contributions welcome via [GitHub](https://github.com/NickNemo17/wyandanch-library).*
