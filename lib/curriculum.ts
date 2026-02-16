@@ -186,8 +186,8 @@ export const allItems: CurriculumItem[] = [
     title: 'Druckenmiller: Principles from Practice',
     author: 'Stanley Druckenmiller (via Schwager, interviews)',
     level: 2,
-    tracks: ['fundamental', 'macro', 'practitioner'],
-    topics: ['the-canon', 'markets-and-execution'],
+    tracks: ['macro', 'practitioner'],
+    topics: ['the-canon', 'economics-and-macro', 'markets-and-execution'],
     description:
       'The greatest macro trader of his generation never wrote a book. Synthesized from three decades of interviews, conference talks, and Schwager\'s New Market Wizards: concentration, liquidity, fat pitches, and radical flexibility.',
     keyConcepts: ['Concentration over diversification', 'Liquidity as primary driver', 'Fat pitch sizing', 'Top-down macro framework', 'Intellectual flexibility'],
