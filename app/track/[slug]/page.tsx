@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { tracks, getTrackBySlug, getItemsByTrack } from '@/lib/curriculum';
@@ -6,6 +7,24 @@ import { ScrollReveal } from '@/components/ScrollReveal';
 
 export function generateStaticParams() {
   return tracks.map((track) => ({ slug: track.slug }));
+}
+
+export function generateMetadata({ params }: { params: { slug: string } }): Metadata {
+  const track = getTrackBySlug(params.slug);
+  if (!track) return {};
+  const title = `${track.title} — Wyandanch Library`;
+  const description = track.description;
+  return {
+    title,
+    description,
+    openGraph: {
+      title: track.title,
+      description,
+      url: `https://wyandanchlibrary.com/track/${track.slug}`,
+      siteName: 'Wyandanch Library',
+      type: 'website',
+    },
+  };
 }
 
 export default function TrackPage({ params }: { params: { slug: string } }) {

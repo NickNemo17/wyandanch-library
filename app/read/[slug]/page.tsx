@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { allItems, getItemBySlug, getAdjacentItems } from '@/lib/curriculum';
 import { ArticleLayout } from '@/components/ArticleLayout';
@@ -6,6 +7,31 @@ import { loadMDXContent } from '@/lib/mdx-map';
 
 export function generateStaticParams() {
   return allItems.map((item) => ({ slug: item.slug }));
+}
+
+export function generateMetadata({ params }: { params: { slug: string } }): Metadata {
+  const item = getItemBySlug(params.slug);
+  if (!item) return {};
+  const title = `${item.title} — Wyandanch Library`;
+  const description = item.description;
+  return {
+    title,
+    description,
+    openGraph: {
+      title: item.title,
+      description,
+      url: `https://wyandanchlibrary.com/read/${item.slug}`,
+      siteName: 'Wyandanch Library',
+      type: 'article',
+      images: [{ url: '/og.png', width: 1200, height: 630 }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: item.title,
+      description,
+      images: ['/og.png'],
+    },
+  };
 }
 
 export default async function ReadPage({ params }: { params: { slug: string } }) {

@@ -1,6 +1,18 @@
+import type { Metadata } from 'next';
 import { levels } from '@/lib/curriculum';
 import { LevelCard } from '@/components/LevelCard';
 import { ScrollReveal } from '@/components/ScrollReveal';
+
+export const metadata: Metadata = {
+  title: 'Curriculum — Wyandanch Library',
+  description: '37 readings across 8 progressive levels. From economic foundations through investing philosophy, valuation, quantitative methods, and advanced topics in market microstructure and machine learning.',
+  openGraph: {
+    title: 'Curriculum — Wyandanch Library',
+    description: '37 readings across 8 progressive levels in investing and quantitative finance.',
+    url: 'https://wyandanchlibrary.com/curriculum',
+    siteName: 'Wyandanch Library',
+  },
+};
 
 export default function CurriculumPage() {
   return (
