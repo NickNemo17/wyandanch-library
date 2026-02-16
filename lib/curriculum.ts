@@ -226,6 +226,17 @@ export const allItems: CurriculumItem[] = [
     keyConcepts: ['GARP', 'Tenbaggers', 'Stock categorization', 'Invest in what you know', 'The amateur edge', 'PEG ratio'],
   },
   {
+    slug: 'schwager-market-wizards',
+    title: 'Market Wizards',
+    author: 'Jack Schwager',
+    level: 2,
+    tracks: ['practitioner', 'fundamental', 'macro'],
+    topics: ['the-canon', 'markets-and-execution'],
+    description:
+      'Jack Schwager\'s interviews with the greatest traders of the 20th century. Discretionary and systematic, fundamental and technical — the common threads of risk management, discipline, and edge that separate survivors from blowups.',
+    keyConcepts: ['Risk management discipline', 'Trading psychology', 'Edge identification', 'Position sizing', 'Cutting losses', 'Letting winners run', 'Process over outcome'],
+  },
+  {
     slug: 'taleb-incerto',
     title: 'Incerto: Fooled by Randomness, Black Swan, Antifragile',
     author: 'Nassim Nicholas Taleb',
@@ -303,6 +314,17 @@ export const allItems: CurriculumItem[] = [
     description:
       'A synthesis of growth investing frameworks: TAM analysis, unit economics, S-curves, disruption theory, PEG ratios, Rule of 40, and the art of identifying compounders before the market prices them in.',
     keyConcepts: ['TAM/SAM/SOM', 'Unit economics', 'S-curves', 'Disruption theory', 'PEG ratio', 'Rule of 40', 'Compounder identification'],
+  },
+  {
+    slug: 'technical-analysis',
+    title: 'Technical Analysis: Price Action, Patterns & Indicators',
+    author: 'Edwards & Magee, Nison, Murphy, Chaikin',
+    level: 4,
+    tracks: ['practitioner', 'fundamental'],
+    topics: ['the-canon', 'markets-and-execution'],
+    description:
+      'The complete technical toolkit: Dow Theory, chart patterns, candlesticks, moving averages, RSI, MACD, Bollinger Bands, Chaikin Money Flow, volume analysis, and the honest debate about when technicals work and when they don\'t.',
+    keyConcepts: ['Dow Theory', 'Chart patterns', 'Candlestick analysis', 'Moving averages', 'RSI', 'MACD', 'Chaikin Money Flow', 'Volume confirmation', 'Support and resistance'],
   },
   // Level 5 — Quantitative Foundations
   {
