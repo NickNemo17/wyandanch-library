@@ -1,0 +1,159 @@
+## Overview
+
+Fixed income is the backbone of global capital markets. The bond market dwarfs the equity market in sheer notional value, and the concepts embedded in bond pricing -- discounting, term structure, credit risk, duration -- form the quantitative foundation of virtually every other asset class. Whether you are pricing a mortgage, valuing a company, or trading interest rate derivatives, you are implicitly using the fixed income toolkit. Understanding how bonds are priced from first principles, how yield curves are constructed and interpreted, and how interest rate risk is measured and managed is not optional for any serious practitioner.
+
+This module covers bond pricing from the present value framework, the full taxonomy of yield measures, yield curve shapes and what they signal about the economy, duration and convexity as tools for measuring and managing interest rate risk, curve construction via bootstrapping and interpolation, term structure models (Vasicek, CIR, HJM), credit spreads and their relationship to the business cycle, rate trading strategies used by institutional desks, and the unique risks embedded in mortgage-backed securities. The goal is to build a complete framework from first principles through to practical application, so that you can read a Bloomberg terminal screen of bond analytics and understand exactly what every number means and why it matters.
+
+## Bond Pricing from First Principles
+
+A bond is a stream of contractual cash flows: periodic coupon payments and a final principal repayment. The price of a bond is the present value of those cash flows, discounted at an appropriate rate. For a fixed-rate bond paying a semiannual coupon C on a face value F, maturing in n periods, at a yield y per period:
+
+`P = Sum(C / (1 + y)^t, t = 1 to n) + F / (1 + y)^n`
+
+This is the most fundamental equation in fixed income. Every other concept -- duration, convexity, spread analysis -- is derived from this relationship between price and yield. When you buy a bond at a given price, you are implicitly accepting a specific discount rate. When market yields change, the present value of those fixed cash flows changes, and so does the bond's price.
+
+**Clean price vs. dirty price**: The quoted price of a bond (the clean price) does not include accrued interest. The actual settlement price (the dirty price, also called the full price or invoice price) includes accrued interest since the last coupon date:
+
+`Dirty Price = Clean Price + Accrued Interest`
+
+Accrued interest is calculated as: `AI = C * (days since last coupon / days in coupon period)`. The day-count convention matters -- actual/actual for Treasuries, 30/360 for most corporate bonds. This distinction exists because it prevents bond prices from exhibiting a sawtooth pattern as coupons accrue and are paid. The clean price reflects pure market movements; the dirty price reflects what you actually pay.
+
+## Yield Measures
+
+Not all yields are created equal. Different yield measures answer different questions:
+
+**Current yield** is the simplest: `Current Yield = Annual Coupon / Clean Price`. It ignores the time value of money, capital gains or losses at maturity, and reinvestment income. It is useful only as a rough income measure.
+
+**Yield to maturity (YTM)** is the internal rate of return that equates the bond's price to the present value of its cash flows. It is the single discount rate y that solves `P = Sum(C / (1 + y)^t) + F / (1 + y)^n`. YTM is the industry standard, but it carries an important embedded assumption: that all coupon payments are reinvested at the YTM rate itself. This reinvestment assumption rarely holds in practice. If you buy a 10-year bond yielding 5% and rates drop to 2% next year, your actual return will be below 5% because reinvested coupons earn less.
+
+**Yield to call (YTC)**: For callable bonds, the issuer can redeem the bond before maturity (typically at par or a slight premium). YTC is the yield assuming the bond is called at the earliest call date. For premium bonds (trading above par), the YTC is typically lower than the YTM because the call truncates the stream of above-market coupons.
+
+**Yield to worst (YTW)**: The minimum of YTM, YTC at each call date, and yield to put (if applicable). YTW gives a conservative estimate of return by assuming the issuer or investor exercises whichever option is most disadvantageous to the bondholder. This is the yield measure that risk managers and portfolio managers focus on.
+
+## The Yield Curve
+
+The yield curve plots yields against maturity for bonds of similar credit quality (most commonly, sovereign government bonds). Its shape contains a wealth of information about market expectations:
+
+**Normal (upward-sloping)**: Longer maturities offer higher yields. This reflects the term premium -- investors demand compensation for bearing the additional interest rate risk and inflation uncertainty of longer-dated bonds. A normal curve generally signals expectations of stable or improving economic growth.
+
+**Inverted**: Short-term yields exceed long-term yields. Historically, yield curve inversions (particularly the 2-year vs. 10-year spread going negative) have been among the most reliable recession predictors. An inverted curve signals that the market expects the central bank to cut rates in the future, typically because of anticipated economic weakness.
+
+**Flat**: Yields are roughly equal across maturities. This often occurs during transitions -- either from normal to inverted (tightening cycle) or inverted to normal (easing cycle). A flat curve compresses the profitability of banks (who borrow short and lend long), which can itself contribute to economic slowdown.
+
+**The term premium** is the extra yield investors require for holding longer-term bonds instead of rolling over a series of short-term bonds. It compensates for duration risk, inflation uncertainty, and liquidity preferences. Estimating the term premium is notoriously difficult -- the ACM (Adrian, Crump, Moench) model from the New York Fed is the most widely referenced decomposition.
+
+## Duration: Measuring Interest Rate Sensitivity
+
+Duration quantifies how much a bond's price changes when yields change. There are several related but distinct duration measures:
+
+**Macaulay duration** is the weighted average time to receipt of cash flows, where each cash flow's weight is its present value as a fraction of the bond's total price:
+
+`D_mac = (1/P) * Sum(t * C / (1 + y)^t, t = 1 to n) + (n * F / (1 + y)^n)`
+
+Macaulay duration is measured in years. A zero-coupon bond has Macaulay duration exactly equal to its maturity. Coupon-paying bonds always have Macaulay duration less than maturity because earlier cash flows pull the weighted average forward.
+
+**Modified duration** translates Macaulay duration into a direct measure of price sensitivity:
+
+`D_mod = D_mac / (1 + y/k)`
+
+where k is the number of coupon periods per year. The key relationship is:
+
+`dP/P ≈ -D_mod * dy`
+
+A bond with modified duration of 7 will lose approximately 7% of its value for every 100 basis point increase in yield. This linear approximation works well for small yield changes but breaks down for larger moves -- which is where convexity enters.
+
+**Dollar duration (DV01)**: The dollar value of a basis point -- how much the bond's price changes for a 1 basis point (0.01%) move in yield: `DV01 = D_mod * P * 0.0001`. This is the metric traders use for position sizing and hedging because it translates percentage sensitivity into actual dollar risk.
+
+## Convexity: Beyond the Linear Approximation
+
+Duration provides a linear approximation of the price-yield relationship, but the actual relationship is curved. Convexity measures this curvature:
+
+`dP/P ≈ -D_mod * dy + 0.5 * Convexity * dy^2`
+
+The convexity term is always positive for option-free bonds, and this has a powerful asymmetric implication: **positive convexity means you gain more when rates fall than you lose when rates rise** (for equal-sized moves). This is why convexity is valuable -- all else equal, a bond with higher convexity is worth more than one with lower convexity.
+
+Convexity increases with maturity and decreases with coupon size. Zero-coupon bonds have the highest convexity for a given duration. In a falling rate environment, high-convexity bonds outperform; in a rising rate environment, they lose less. Portfolio managers sometimes say they want to be "long convexity" -- they want the asymmetry of benefiting disproportionately from rate moves in either direction.
+
+For large yield changes (50 basis points or more), ignoring convexity produces meaningful pricing errors. A 30-year zero-coupon bond with modified duration of 30 and convexity of 900 would see the following for a 100 basis point rise: the duration approximation says -30%, the convexity-adjusted estimate says -30% + 0.5 * 900 * 0.01^2 = -30% + 4.5% = -25.5%. The 4.5% convexity correction is economically significant.
+
+## Curve Construction: Bootstrapping and Interpolation
+
+The yield curve quoted in markets is typically a par yield curve -- yields on bonds trading at par. But for pricing arbitrary cash flows, we need the zero-coupon (spot) curve, which gives the discount rate for each specific maturity. The process of extracting spot rates from par rates is called **bootstrapping**.
+
+The bootstrap algorithm works iteratively. The shortest maturity par rate directly gives the first spot rate (since a single-period bond at par has its coupon rate equal to its yield). For each subsequent maturity, you use the already-determined spot rates to discount all intermediate cash flows, then solve for the new spot rate that prices the par bond correctly.
+
+For example, if the 1-year spot rate `z_1` is 4% and the 2-year par rate is 4.5%, the 2-year spot rate `z_2` satisfies: `4.5 / (1 + z_1) + 104.5 / (1 + z_2)^2 = 100`. Solving gives `z_2`, and the process continues outward.
+
+Between observed maturities, we need **interpolation**. Common methods include:
+
+- **Linear interpolation**: Simple but produces a discontinuous forward rate curve, which is economically unrealistic.
+- **Cubic spline**: Smooth curve through observed points. Produces continuous forward rates but can oscillate between data points.
+- **Nelson-Siegel-Svensson (NSS)**: A parametric model that fits the entire curve with a small number of parameters (six for Svensson). The functional form captures level, slope, and curvature components and produces smooth, economically reasonable forward rates. Central banks widely use NSS for official curve estimation.
+
+The choice of interpolation method matters for pricing and hedging -- different methods can produce meaningfully different forward rates, which directly affect the valuation of forward-starting instruments and swaps.
+
+## Term Structure Models
+
+While the bootstrapped curve gives us today's discount function, we often need to model how rates evolve over time -- for pricing interest rate derivatives, for risk simulation, and for relative value analysis.
+
+**Vasicek model**: `dr = a(b - r)dt + sigma * dW`. Rates are mean-reverting toward a long-run level b with speed a, plus a normally distributed random shock. The Vasicek model is analytically tractable (closed-form bond prices), but it allows negative interest rates because the rate process is Gaussian. Once considered a flaw, this property became more realistic after the era of negative policy rates in Europe and Japan.
+
+**Cox-Ingersoll-Ross (CIR) model**: `dr = a(b - r)dt + sigma * sqrt(r) * dW`. The key difference from Vasicek is that volatility is proportional to the square root of the rate level, ensuring rates stay non-negative (provided the Feller condition `2ab ≥ sigma^2` is satisfied). CIR also has closed-form bond prices and is widely used for its non-negativity property.
+
+**Heath-Jarrow-Morton (HJM) framework**: Rather than modeling the short rate, HJM models the entire forward rate curve directly. The key insight is the **drift restriction**: in a no-arbitrage framework, the drift of each forward rate is completely determined by its volatility function. This means you only need to specify the volatility structure -- the drifts follow automatically. HJM nests Vasicek and CIR as special cases and provides the theoretical foundation for the LIBOR (now SOFR) market model used to price caps, floors, and swaptions.
+
+## Credit Spreads and the Business Cycle
+
+The credit spread is the yield premium a corporate bond offers over a risk-free government bond of the same maturity. It compensates investors for three things: expected default losses, a risk premium for bearing default uncertainty, and a liquidity premium for the lower marketability of corporate bonds relative to Treasuries.
+
+**Spread duration** measures the sensitivity of a bond's price to changes in the credit spread (as opposed to the risk-free rate). For investment-grade bonds, spread duration is approximately equal to modified duration. But the distinction matters for trading and hedging -- a Treasury hedge eliminates rate risk but not spread risk.
+
+Credit spreads are countercyclical -- they widen during recessions and tighten during expansions. Investment-grade spreads typically range from 80 to 150 basis points in benign environments but can blow out to 300 or more during credit crises. High-yield spreads are more volatile, ranging from 300 to 500 basis points in normal times and exceeding 1000 basis points during severe stress (as in 2008 and briefly in 2020). Monitoring the spread cycle is essential for both bond portfolio managers and equity investors, as spread widening often foreshadows equity market weakness.
+
+## Rate Trading Strategies
+
+Institutional fixed income desks express views on rates through structured positions:
+
+**Duration trades (outright long/short)**: The simplest expression. Going long duration profits when rates fall; going short profits when rates rise. Traders size positions using DV01 to calibrate dollar risk per basis point.
+
+**Curve trades**: Rather than betting on the level of rates, curve trades bet on the shape. A **steepener** profits when the yield curve steepens (long-term rates rise relative to short-term). A **flattener** profits from the opposite. These are typically implemented as DV01-neutral: for example, going long the 2-year and short the 10-year in proportions that produce zero P&L for a parallel shift, isolating the slope exposure.
+
+**Butterfly trades**: Three-legged positions that express a view on curvature. A typical butterfly goes long the 2-year and 30-year while shorting the 10-year (or vice versa). The position is both duration-neutral and slope-neutral, profiting only from changes in the curvature of the yield curve. Butterflies are popular relative value trades because they isolate a specific risk factor.
+
+**Relative value**: Identifying bonds that appear mispriced relative to the fitted curve. If a specific bond trades cheap to the interpolated curve (its yield is above what the model implies), a trader can buy that bond and hedge with neighboring maturities, capturing the convergence as the bond richens back to fair value.
+
+## Mortgage-Backed Securities
+
+Mortgage-backed securities (MBS) are bonds backed by pools of residential mortgages. They introduce a risk that does not exist in vanilla bonds: **prepayment risk**. Homeowners can refinance their mortgages when rates fall, which means the MBS investor receives principal back early -- precisely when reinvestment opportunities are least attractive.
+
+This prepayment optionality creates **negative convexity**. Unlike option-free bonds that benefit from positive convexity (gaining more when rates fall than losing when they rise), MBS exhibit the opposite pattern at lower yields: as rates fall, prepayments accelerate, capping the price appreciation. The MBS investor has effectively sold a call option to homeowners. This is why MBS trade at a yield premium to Treasuries even for agency MBS (those guaranteed against credit losses by Fannie Mae, Freddie Mac, or Ginnie Mae) -- the premium compensates for the embedded prepayment option.
+
+**Option-adjusted spread (OAS)** is the standard metric for valuing MBS relative to Treasuries. OAS is the constant spread added to each point on the risk-free curve that, after accounting for the prepayment option via Monte Carlo simulation of interest rate paths and a prepayment model, equates the model price to the market price. A higher OAS implies the MBS is cheaper (offering more compensation for its risks); a lower OAS implies it is richer. OAS allows apples-to-apples comparison across MBS with different coupons, maturities, and prepayment characteristics.
+
+MBS convexity profiles create hedging challenges. As rates rally, MBS duration shortens (because of faster prepayments), forcing hedgers to buy more bonds or receive more in swaps -- pushing prices higher and rates lower. As rates sell off, duration extends, forcing hedgers to sell -- pushing prices lower and rates higher. This convexity hedging feedback loop amplifies rate moves and is one reason why the mortgage market can create systemic volatility in the broader rates market.
+
+## Why This Matters
+
+Fixed income is not just about bonds. The concepts covered here -- discounting, term structure, duration, convexity, credit risk -- form the analytical infrastructure of all of finance. Equity valuation models discount cash flows using rates derived from the yield curve. Derivative pricing relies on the risk-free rate term structure. Corporate treasurers manage funding costs by issuing along the curve. Central banks conduct monetary policy by targeting short-term rates and buying along the curve (quantitative easing). Understanding fixed income gives you the conceptual toolkit to analyze any financial instrument, because every financial instrument is ultimately a set of cash flows that must be discounted at appropriate rates.
+
+## Key Takeaways
+
+- A bond's price is the present value of its cash flows: `P = Sum(C/(1+y)^t) + F/(1+y)^n`. Clean price excludes accrued interest; dirty price is what you actually pay.
+- Yield to maturity is the standard but assumes coupons are reinvested at the YTM rate. Yield to worst gives the most conservative return estimate for callable bonds.
+- The yield curve shape signals economic expectations: normal means growth, inverted signals recession, flat signals transition. The 2s10s spread is the most-watched indicator.
+- Modified duration measures linear price sensitivity to yield changes: `dP/P ≈ -D_mod * dy`. A duration of 7 means roughly 7% price change per 100 basis points.
+- Convexity captures the curvature that duration misses: `dP/P ≈ -D*dy + 0.5*C*dy^2`. Positive convexity is valuable because gains exceed losses for equal-sized rate moves.
+- Bootstrapping extracts zero-coupon spot rates from par yields, and interpolation methods (linear, cubic spline, Nelson-Siegel-Svensson) fill in the gaps between observed maturities.
+- Credit spreads are countercyclical -- they widen in recessions and tighten in expansions. Spread widening often leads equity market weakness.
+- Mortgage-backed securities exhibit negative convexity due to prepayment risk, and their hedging flows amplify rate moves in the broader market.
+
+## Further Reading
+
+- [Econometrics and FX](/read/econometrics-and-fx) -- quantitative methods for analyzing rate differentials across currencies
+- [Derivative Portfolio Management](/read/derivative-portfolio-management) -- applying Greeks and risk management to interest rate derivative books
+- [Model Implementation](/read/model-implementation) -- building term structure models and pricing engines in production systems
+- [Stochastic Volatility Models](/read/stochastic-volatility-models) -- volatility surface dynamics relevant to swaptions and rate options
+
+---
+
+*This is a living document. Contributions welcome via [GitHub](https://github.com/NickNemo17/wyandanch-library).*

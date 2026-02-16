@@ -1,0 +1,133 @@
+## Overview
+
+Portfolio construction is the discipline of combining individual assets or signals into a coherent, investable portfolio that maximizes some objective -- typically risk-adjusted return -- subject to real-world constraints. It sits at the center of quantitative finance: upstream are the alpha signals and return forecasts; downstream are the execution algorithms and risk management systems. The quality of portfolio construction determines whether good research ideas become profitable strategies or expensive disappointments. A brilliant alpha signal paired with naive equal-weighting will underperform a mediocre signal paired with sophisticated optimization.
+
+This article covers the major frameworks: Markowitz mean-variance optimization and its pathologies, the covariance matrix estimation problem, the Black-Litterman model for stable portfolios from equilibrium priors and active views, risk parity as an alternative that sidesteps return estimation, the Kelly criterion for optimal growth, practical constraints, rebalancing mechanics, and the role of correlation and diversification. Each framework addresses a specific failure mode of the ones before it, and understanding the full chain is essential for anyone building portfolios that must survive contact with live markets.
+
+## Markowitz Mean-Variance Optimization
+
+Harry Markowitz's 1952 framework remains the starting point for all portfolio construction theory. Given a vector of expected returns `mu` and a covariance matrix `Sigma` for N assets, find the weight vector `w` that minimizes portfolio variance for a given target return.
+
+The portfolio variance is `sigma_p^2 = w' * Sigma * w`, and the expected return is `mu_p = w' * mu`. The optimization problem is: minimize `w' * Sigma * w` subject to `w' * mu = mu_target` and `w' * 1 = 1`. The solution traces out the efficient frontier -- the set of portfolios offering the highest return for each level of risk.
+
+**The Inputs Problem.** Mean-variance optimization requires expected returns and the covariance matrix. The covariance matrix can be estimated from historical data with reasonable accuracy. Expected returns cannot. A 1% change in the expected return of a single asset can completely rearrange the optimal portfolio. Chopra and Ziemba (1993) showed that errors in expected returns are roughly 10 times more damaging than errors in variances, which are roughly twice as damaging as errors in correlations.
+
+**Why It Breaks in Practice.** Unconstrained optimization produces portfolios that are mathematically optimal but practically absurd: extreme positions, massive concentration, and wild sensitivity to input changes. These portfolios exploit estimation errors, not genuine return opportunities. DeMiguel, Garlappi, and Uppal (2009) showed that naive `1/N` equal weighting outperformed 14 optimization-based strategies out of sample, because estimation errors overwhelmed the theoretical gains from optimization.
+
+## The Covariance Matrix Problem
+
+Even setting aside the return estimation nightmare, the covariance matrix itself is problematic. The sample covariance matrix has `N * (N + 1) / 2` unique parameters. When N is large relative to T (the number of observations), the sample covariance is severely noisy: eigenvalues are too dispersed, and the matrix inverse required for optimization is unstable.
+
+**Ledoit-Wolf Shrinkage.** Ledoit and Wolf (2004) proposed blending the noisy but unbiased sample covariance S with a stable but biased structured target F:
+
+`Sigma_shrunk = alpha * F + (1 - alpha) * S`
+
+The shrinkage target F is typically a single-factor model covariance or a scaled identity matrix. The optimal shrinkage intensity alpha has a closed-form solution that minimizes expected squared estimation error (Frobenius norm). When data is abundant relative to assets, alpha is small and the sample dominates; when assets outnumber observations, alpha is large and the target dominates.
+
+**Factor-Model Covariance.** An alternative is to impose structure via a factor model. If returns follow `r = B * f + epsilon`, the covariance decomposes as `Sigma = B * Sigma_f * B' + D`, where `Sigma_f` is the `K x K` factor covariance and D is a diagonal matrix of idiosyncratic variances. With K much smaller than N, you estimate far fewer parameters. The Barra model used across the industry is exactly this structure.
+
+## The Black-Litterman Model
+
+The Black-Litterman (BL) model, developed at Goldman Sachs in 1990, is the most important practical advance in portfolio construction since Markowitz. It solves the inputs problem by providing a disciplined framework for generating stable expected returns.
+
+**Step 1: Market-Implied Equilibrium Returns.** Reverse-engineer the expected returns that would make the market-cap-weighted portfolio optimal. The implied excess return vector is:
+
+`Pi = delta * Sigma * w_mkt`
+
+Where delta is the market risk aversion coefficient, Sigma is the covariance matrix, and `w_mkt` is the vector of market-cap weights. These implied returns are the "prior" -- absent any active views, hold the market.
+
+**Step 2: Express Active Views.** Express views as `P * mu = Q + epsilon`, where P is a pick matrix identifying assets, Q is the vector of view magnitudes, and epsilon captures uncertainty with covariance Omega. Views can be absolute ("US equities return 8%") or relative ("US equities outperform Europe by 3%").
+
+**Step 3: Posterior Returns.** The Black-Litterman posterior combines the equilibrium prior with the views via Bayesian updating:
+
+`mu_BL = [(tau * Sigma)^(-1) + P' * Omega^(-1) * P]^(-1) * [(tau * Sigma)^(-1) * Pi + P' * Omega^(-1) * Q]`
+
+The parameter tau scales uncertainty in the prior (typically around 0.05). When views are confident (small Omega), the posterior tilts strongly toward them; when uncertain, it stays close to equilibrium. With no views, the model defaults to market-cap weights -- a stable baseline that unconstrained mean-variance optimization cannot provide.
+
+## Risk Parity
+
+Risk parity takes a fundamentally different approach: instead of optimizing expected return per unit of risk, allocate so that each asset contributes equally to total portfolio risk. This eliminates the need for return estimates entirely.
+
+The risk contribution of asset i is `RC_i = w_i * (Sigma * w)_i / sigma_p`. Risk parity solves for weights where `RC_i = RC_j` for all pairs i, j. There is no closed-form solution; the problem is solved numerically via the Spinu algorithm or cyclical coordinate descent.
+
+**The Implicit Assumption.** Risk parity implicitly assumes equal Sharpe ratios across all assets. If some assets have genuinely higher risk-adjusted returns, risk parity underweights them. The tradeoff: you avoid catastrophic estimation errors but sacrifice the ability to tilt toward superior opportunities.
+
+**Why It Has Worked.** Levered risk parity portfolios -- most famously Bridgewater's All Weather fund -- have delivered strong risk-adjusted returns with lower drawdowns than 60/40 portfolios. Bonds and commodities have historically offered Sharpe ratios comparable to equities, so the equal-Sharpe assumption has been approximately correct. Diversifying across risk sources (equity, interest rate, inflation) provides smoother returns than the equity-dominated 60/40 profile.
+
+## The Kelly Criterion at Portfolio Level
+
+The Kelly criterion, derived by John Kelly at Bell Labs in 1956, identifies the bet size that maximizes long-run geometric growth rate. For a single asset with excess return mu and variance `sigma^2`, the optimal Kelly fraction is:
+
+`f* = mu / sigma^2`
+
+For a portfolio of N assets, the multivariate Kelly portfolio is:
+
+`w* = Sigma^(-1) * mu`
+
+This is identical to the unconstrained mean-variance tangency portfolio. The difference is interpretation: Kelly maximizes geometric growth, while mean-variance maximizes arithmetic risk-adjusted return.
+
+**Fractional Kelly.** Full Kelly is extremely aggressive with severe expected drawdowns, and assumes perfectly known parameters. Fractional Kelly -- typically 0.25 to 0.5 of full Kelly -- sacrifices some growth rate for dramatically reduced drawdown risk. A half-Kelly portfolio achieves 75% of the full Kelly growth rate with substantially smoother performance.
+
+**The Connection to Mean-Variance.** Full Kelly corresponds to a specific level of risk aversion; fractional Kelly corresponds to higher risk aversion. The Kelly fraction answers "how much to bet" and the mean-variance risk aversion parameter answers "how much risk to take" -- they are the same question, linking the gambling-theoretic and portfolio-theoretic traditions.
+
+## Constraints in Practice
+
+No real portfolio is unconstrained. Regulatory requirements, client mandates, and risk policies impose constraints that shape the final portfolio as much as the optimization objective.
+
+**Long-Only.** Many institutional mandates prohibit short selling: `w_i ≥ 0` for all i. This eliminates many pathological extreme-weight solutions but limits the ability to express negative views.
+
+**Position Size Limits.** Maximum weights per asset (e.g., `w_i ≤ 5%`) prevent dangerous concentration. Minimum weights ensure meaningful positions that justify the operational cost of holding them.
+
+**Sector and Country Limits.** Constraints like "no more than 25% in financials" enforce diversification along dimensions the covariance matrix may not capture. These often reflect regulatory requirements or client investment policy statements.
+
+**Turnover Limits.** Constraining turnover (the sum of absolute weight changes) controls transaction costs and prevents churning in response to small input changes.
+
+**Tracking Error Budgets.** For strategies benchmarked to an index, a tracking error constraint limits the volatility of excess returns relative to the benchmark: `sqrt(w_active' * Sigma * w_active) ≤ TE_max`. This keeps the portfolio close enough to the benchmark that career risk is manageable while still allowing active bets.
+
+## Rebalancing
+
+A portfolio drifts away from its target weights as prices move. Rebalancing restores the target allocation, but it incurs transaction costs and tax consequences. The rebalancing decision is a tradeoff between tracking the target precisely and minimizing trading costs.
+
+**Calendar Rebalancing.** Rebalance at fixed intervals -- monthly, quarterly, annually. Simple to implement but ignores the magnitude of drift. A portfolio that drifts 1% in a quiet month gets rebalanced just as aggressively as one that drifts 10%.
+
+**Threshold Rebalancing.** Rebalance only when any weight deviates from target by more than a threshold (e.g., 5 percentage points). This concentrates trading when it matters and avoids unnecessary trades. In practice, threshold rebalancing reduces costs by 30-50% relative to calendar rebalancing with similar tracking.
+
+**Transaction Cost Optimization.** Embed transaction costs directly into the optimization: `maximize alpha - lambda * risk - costs`. The optimizer naturally reduces turnover by trading off marginal alpha against marginal cost. Almgren-Chriss execution models (covered in the Systematic Indices module) provide the cost function.
+
+**Tax-Loss Harvesting.** In taxable accounts, rebalancing creates an opportunity to realize losses that offset gains elsewhere. Sell losing positions for the tax deduction while purchasing a correlated (but not "substantially identical") replacement to maintain risk exposure. The value depends on the investor's tax rate, available gains to offset, and wash-sale rules that prevent repurchasing the same security within 30 days.
+
+## Correlation, Diversification, and Its Limits
+
+Harry Markowitz called diversification "the only free lunch in finance." Combining assets with imperfect correlation produces a portfolio with lower risk than the weighted average of individual risks. Portfolio variance is `sigma_p^2 = sum_i sum_j w_i * w_j * sigma_i * sigma_j * rho_ij`, and as long as `rho_ij` is less than 1, diversification reduces risk without reducing expected return.
+
+**The Diversification Ratio.** The diversification ratio `DR = (w' * sigma) / sigma_p` measures how much risk reduction diversification provides. A concentrated portfolio has `DR = 1`; higher DR means more diversification benefit. Maximum diversification portfolios (Choueifaty and Coignard, 2008) explicitly maximize this ratio.
+
+**Correlation Breakdown in Crises.** Correlations are not stable. In crises they spike toward one -- assets that diversified in calm periods become highly correlated when diversification is most needed. The 2008 crisis, the 2020 COVID crash, and virtually every severe drawdown exhibit this pattern.
+
+**Tail Dependence.** Standard correlation measures linear dependence and may miss nonlinear relationships in the tails. Copula models, particularly the Clayton copula (which captures lower-tail dependence), provide a richer picture of how assets co-move in extremes. Stress testing with crisis scenarios or Monte Carlo simulation using fat-tailed copulas is essential for understanding true portfolio risk.
+
+## Why This Matters
+
+Portfolio construction is where theory meets capital. If you size positions naively, ignore estimation error in your covariance matrix, or rebalance without accounting for transaction costs, you will underperform a simple equal-weight portfolio. The frameworks here -- Markowitz, Black-Litterman, risk parity, Kelly -- are complementary tools, each addressing a specific limitation of the others. Markowitz defines the problem; Black-Litterman stabilizes the inputs; risk parity eliminates the hardest input entirely; Kelly links position sizing to growth rate maximization. Understanding when to use each framework is the core competency of a portfolio constructor.
+
+## Key Takeaways
+
+- Mean-variance optimization defines the efficient frontier but is extremely sensitive to expected return estimates, producing unstable and concentrated portfolios in practice.
+- The sample covariance matrix is unreliable when assets outnumber observations. Ledoit-Wolf shrinkage and factor-model covariance structures provide stable alternatives.
+- The Black-Litterman model starts from market-implied equilibrium returns, blends in investor views with explicit confidence levels, and produces portfolios that are stable, intuitive, and default to market-cap weights absent any views.
+- Risk parity equalizes risk contributions across assets, eliminating the need for return forecasts but implicitly assuming equal Sharpe ratios across all holdings.
+- The Kelly criterion identifies the growth-rate-maximizing portfolio, which coincides with the mean-variance tangency portfolio. Fractional Kelly (25-50% of full Kelly) is standard in practice to manage drawdown risk.
+- Practical constraints -- long-only, sector limits, turnover caps, tracking error budgets -- shape real portfolios as much as the optimization objective itself.
+- Threshold rebalancing is more cost-efficient than calendar rebalancing. Embedding transaction costs directly into the optimizer produces the best results.
+- Diversification reduces risk when correlations are below one, but correlations spike in crises. Tail-dependence modeling and stress testing are essential to understand true portfolio risk.
+
+## Further Reading
+
+- [Systematic Indices](/read/systematic-indices) -- factor construction, covariance estimation, and performance evaluation for rules-based strategies
+- [Gappy Lecture 1: Alpha Research](/read/gappy-lecture-1-alpha-research) -- signal construction and testing methodology upstream of portfolio construction
+- [Quantitative Foundations](/read/quant-foundations) -- the mathematical prerequisites for optimization, linear algebra, and probability
+- [Derivative Portfolio Management](/read/derivative-portfolio-management) -- extending portfolio construction to options and structured products
+
+---
+
+*This is a living document. Contributions welcome via [GitHub](https://github.com/NickNemo17/wyandanch-library).*

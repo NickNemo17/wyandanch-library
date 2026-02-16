@@ -192,6 +192,28 @@ export const allItems: CurriculumItem[] = [
       'The greatest macro trader of his generation never wrote a book. Synthesized from three decades of interviews, conference talks, and Schwager\'s New Market Wizards: concentration, liquidity, fat pitches, and radical flexibility.',
     keyConcepts: ['Concentration over diversification', 'Liquidity as primary driver', 'Fat pitch sizing', 'Top-down macro framework', 'Intellectual flexibility'],
   },
+  {
+    slug: 'graham-value-investing',
+    title: 'Security Analysis & The Intelligent Investor',
+    author: 'Benjamin Graham',
+    level: 2,
+    tracks: ['fundamental'],
+    topics: ['the-canon'],
+    description:
+      'The father of value investing. Graham\'s framework for margin of safety, intrinsic value, Mr. Market, and the distinction between investment and speculation.',
+    keyConcepts: ['Margin of safety', 'Intrinsic value', 'Mr. Market', 'Investment vs. speculation', 'Net-net investing'],
+  },
+  {
+    slug: 'taleb-incerto',
+    title: 'Incerto: Fooled by Randomness, Black Swan, Antifragile',
+    author: 'Nassim Nicholas Taleb',
+    level: 2,
+    tracks: ['fundamental', 'quantitative'],
+    topics: ['the-canon', 'quantitative-methods'],
+    description:
+      'Taleb\'s philosophical and mathematical framework for navigating uncertainty, fat tails, and the limits of prediction. Why most risk models are wrong and what to do about it.',
+    keyConcepts: ['Fat tails', 'Black swans', 'Antifragility', 'Narrative fallacy', 'Skin in the game', 'Ludic fallacy'],
+  },
   // Level 3 — Macro & Monetary Theory
   {
     slug: 'keynes-general-theory',
@@ -214,6 +236,28 @@ export const allItems: CurriculumItem[] = [
     description:
       'Hayek\'s counter to Keynes: how credit expansion distorts the structure of production and inevitably leads to bust. The Austrian business cycle theory.',
     keyConcepts: ['Austrian business cycle theory', 'Structure of production', 'Credit expansion', 'Malinvestment', 'Natural rate of interest'],
+  },
+  {
+    slug: 'soros-reflexivity',
+    title: 'The Alchemy of Finance & Reflexivity',
+    author: 'George Soros',
+    level: 3,
+    tracks: ['macro', 'practitioner'],
+    topics: ['the-canon', 'economics-and-macro'],
+    description:
+      'Soros\' theory of reflexivity: feedback loops between market prices and fundamentals that create boom-bust cycles. The philosophical foundation behind the Quantum Fund.',
+    keyConcepts: ['Reflexivity', 'Boom-bust cycles', 'Fallibility', 'Two-way feedback', 'Real-time experiment'],
+  },
+  {
+    slug: 'behavioral-finance',
+    title: 'Behavioral Finance: Kahneman, Tversky & Beyond',
+    author: 'Kahneman, Tversky, Thaler',
+    level: 3,
+    tracks: ['fundamental', 'quantitative', 'macro'],
+    topics: ['the-canon', 'economics-and-macro'],
+    description:
+      'The psychological foundations of market behavior. Prospect theory, loss aversion, anchoring, overconfidence, and the systematic biases that create mispricings.',
+    keyConcepts: ['Prospect theory', 'Loss aversion', 'Anchoring', 'Overconfidence', 'Disposition effect', 'Herd behavior'],
   },
   // Level 4 — Valuation
   {
@@ -260,6 +304,17 @@ export const allItems: CurriculumItem[] = [
     description:
       'An introduction to GARCH models for volatility estimation and forecasting. Understanding how volatility clusters and why it matters for risk management.',
     keyConcepts: ['Volatility clustering', 'ARCH/GARCH models', 'Conditional variance', 'Volatility forecasting'],
+  },
+  {
+    slug: 'portfolio-construction',
+    title: 'Portfolio Construction',
+    author: 'Markowitz, Black-Litterman, Various',
+    level: 6,
+    tracks: ['quantitative', 'fundamental'],
+    topics: ['factor-models', 'quantitative-methods'],
+    description:
+      'From Markowitz\'s efficient frontier through Black-Litterman, risk parity, and Kelly criterion at the portfolio level. How to turn signals and convictions into actual allocations.',
+    keyConcepts: ['Efficient frontier', 'Mean-variance optimization', 'Black-Litterman', 'Risk parity', 'Position sizing', 'Rebalancing'],
   },
   // Level 6 — Strategy & Implementation
   {
@@ -351,6 +406,17 @@ export const allItems: CurriculumItem[] = [
       'Managing a portfolio of derivative instruments. Greeks, hedging strategies, and the practical challenges of options book management.',
     keyConcepts: ['Greeks management', 'Delta hedging', 'Gamma trading', 'Vol surface', 'Portfolio Greeks'],
   },
+  {
+    slug: 'fixed-income-fundamentals',
+    title: 'Fixed Income Fundamentals',
+    author: 'Various',
+    level: 7,
+    tracks: ['practitioner', 'quantitative', 'macro'],
+    topics: ['markets-and-execution', 'quantitative-methods'],
+    description:
+      'Bonds, yield curves, duration, convexity, and rate trading. The largest asset class in the world, and the one most finance curricula cover worst.',
+    keyConcepts: ['Yield curves', 'Duration and convexity', 'Term structure models', 'Rate trading', 'Credit spreads', 'Curve construction'],
+  },
   // Level 8 — Advanced Topics
   {
     slug: 'market-microstructure-trading',
@@ -414,7 +480,7 @@ export const levels: Level[] = [
   {
     number: 3,
     title: 'Macro & Monetary Theory',
-    description: 'Keynes vs. Hayek and the forces that shape markets',
+    description: 'Keynes, Hayek, Soros, and the psychology of markets',
     items: allItems.filter((i) => i.level === 3),
   },
   {
