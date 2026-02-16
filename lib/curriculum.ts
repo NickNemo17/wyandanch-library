@@ -204,6 +204,28 @@ export const allItems: CurriculumItem[] = [
     keyConcepts: ['Margin of safety', 'Intrinsic value', 'Mr. Market', 'Investment vs. speculation', 'Net-net investing'],
   },
   {
+    slug: 'engines-that-move-markets',
+    title: 'Engines That Move Markets',
+    author: 'Alasdair Nairn',
+    level: 2,
+    tracks: ['fundamental', 'macro'],
+    topics: ['the-canon', 'economics-and-macro'],
+    description:
+      'The recurring pattern of technology-driven investment booms and busts: railroads, radio, automobiles, electronics, and the internet. How transformative industries create and destroy fortunes through predictable cycles.',
+    keyConcepts: ['Technology adoption S-curves', 'Innovation boom-bust cycles', 'Capital misallocation', 'Transformative vs. incremental innovation', 'Investor psychology in tech revolutions'],
+  },
+  {
+    slug: 'lynch-one-up-on-wall-street',
+    title: 'One Up on Wall Street',
+    author: 'Peter Lynch',
+    level: 2,
+    tracks: ['fundamental'],
+    topics: ['the-canon'],
+    description:
+      'The greatest mutual fund manager explains growth at a reasonable price, stock categorization (fast growers, stalwarts, turnarounds, cyclicals), tenbaggers, and why amateur investors can beat professionals.',
+    keyConcepts: ['GARP', 'Tenbaggers', 'Stock categorization', 'Invest in what you know', 'The amateur edge', 'PEG ratio'],
+  },
+  {
     slug: 'taleb-incerto',
     title: 'Incerto: Fooled by Randomness, Black Swan, Antifragile',
     author: 'Nassim Nicholas Taleb',
@@ -270,6 +292,17 @@ export const allItems: CurriculumItem[] = [
     description:
       'Damodaran distills valuation into its essentials: intrinsic value, relative value, and the stories that connect numbers to narratives.',
     keyConcepts: ['Intrinsic valuation', 'Relative valuation', 'DCF models', 'Cost of capital', 'Narrative and numbers'],
+  },
+  {
+    slug: 'growth-investing-principles',
+    title: 'Growth Investing: Principles & Frameworks',
+    author: 'Various (Fisher, Lynch, Nairn, Christensen)',
+    level: 4,
+    tracks: ['fundamental'],
+    topics: ['the-canon'],
+    description:
+      'A synthesis of growth investing frameworks: TAM analysis, unit economics, S-curves, disruption theory, PEG ratios, Rule of 40, and the art of identifying compounders before the market prices them in.',
+    keyConcepts: ['TAM/SAM/SOM', 'Unit economics', 'S-curves', 'Disruption theory', 'PEG ratio', 'Rule of 40', 'Compounder identification'],
   },
   // Level 5 — Quantitative Foundations
   {
