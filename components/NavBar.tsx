@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 
 export function NavBar() {
   const [open, setOpen] = useState(false);
@@ -10,6 +11,13 @@ export function NavBar() {
     <nav className="navbar">
       <div className="navbar-inner">
         <Link href="/" className="navbar-logo">
+          <Image
+            src="/logo.png"
+            alt="Wyandanch"
+            width={40}
+            height={40}
+            className="navbar-logo-img"
+          />
           <div>
             <div className="navbar-logo-text">Wyandanch Library</div>
             <div className="navbar-logo-sub">Open Source Education</div>

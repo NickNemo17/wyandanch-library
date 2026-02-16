@@ -203,6 +203,11 @@ a { color: inherit; text-decoration: none; }
   gap: 12px;
 }
 
+.navbar-logo-img {
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
 .navbar-logo-text {
   font-size: 15px;
   font-weight: 700;
