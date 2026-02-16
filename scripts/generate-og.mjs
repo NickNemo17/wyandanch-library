@@ -46,7 +46,7 @@ const svg = `<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg" x
   <circle cx="268" cy="102" r="6" fill="#aaa"/>
 
   <!-- Title bar text -->
-  <text x="600" y="107" text-anchor="middle" font-family="monospace" font-size="13" fill="#555" letter-spacing="1">wyandanchlibrary.com</text>
+  <text x="600" y="107" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="13" fill="#555" letter-spacing="1">wyandanchlibrary.com</text>
 
   <!-- Terminal body bg -->
   <rect x="201" y="124" width="798" height="425" fill="url(#bodyGrad)"/>
@@ -55,20 +55,20 @@ const svg = `<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg" x
   <image x="540" y="148" width="120" height="120" href="data:image/png;base64,${logoBase64}" />
 
   <!-- Title -->
-  <text x="600" y="310" text-anchor="middle" font-family="sans-serif" font-size="42" font-weight="700" fill="#fafafa" letter-spacing="-1">Wyandanch Library</text>
+  <text x="600" y="310" text-anchor="middle" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="42" font-weight="700" fill="#fafafa" letter-spacing="-0.5">Wyandanch Library</text>
 
   <!-- Subtitle -->
-  <text x="600" y="345" text-anchor="middle" font-family="monospace" font-size="13" fill="#888" letter-spacing="4">OPEN SOURCE FINANCE EDUCATION</text>
+  <text x="600" y="345" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="13" fill="#888" letter-spacing="4">OPEN SOURCE FINANCE EDUCATION</text>
 
   <!-- Tagline -->
-  <text x="565" y="400" text-anchor="middle" font-family="monospace" font-size="18" fill="#d4d4d4">From Menger to machine learning._</text>
-  <text x="370" y="400" text-anchor="middle" font-family="monospace" font-size="18" fill="#ffffff" font-weight="700">&gt;</text>
+  <text x="565" y="400" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="18" fill="#d4d4d4">From Menger to machine learning._</text>
+  <text x="370" y="400" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="18" fill="#ffffff" font-weight="700">&gt;</text>
 
   <!-- Stats -->
-  <text x="600" y="460" text-anchor="middle" font-family="monospace" font-size="12" fill="#555" letter-spacing="1">25 READINGS  |  8 LEVELS  |  4 TRACKS  |  FREE &amp; OPEN SOURCE</text>
+  <text x="600" y="460" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="12" fill="#555" letter-spacing="1">37 READINGS  |  8 LEVELS  |  4 TRACKS  |  FREE &amp; OPEN SOURCE</text>
 
   <!-- Brought to you -->
-  <text x="600" y="510" text-anchor="middle" font-family="monospace" font-size="11" fill="#444" letter-spacing="1">WYANDANCH CAPITAL  &amp;  WYANDANCH CONSULTING</text>
+  <text x="600" y="510" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="11" fill="#444" letter-spacing="1">WYANDANCH CAPITAL  &amp;  WYANDANCH CONSULTING</text>
 </svg>`;
 
 // Write SVG
