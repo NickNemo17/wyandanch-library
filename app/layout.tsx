@@ -13,7 +13,7 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: 'Wyandanch Library | Open Source Finance Education',
   description:
-    'A free, open source curriculum for learning investing and quantitative finance from first principles. 23 readings across 8 progressive levels.',
+    'A free, open source curriculum for learning investing and quantitative finance from first principles. 25 readings across 8 progressive levels.',
   keywords: [
     'finance education',
     'investing curriculum',
@@ -23,13 +23,30 @@ export const metadata: Metadata = {
     'free education',
   ],
   authors: [{ name: 'Wyandanch Library' }],
+  metadataBase: new URL('https://wyandanchlibrary.com'),
   openGraph: {
     title: 'Wyandanch Library',
     description:
       'Free, open source education in investing and quantitative finance. From Menger to machine learning.',
+    url: 'https://wyandanchlibrary.com',
     siteName: 'Wyandanch Library',
     locale: 'en_US',
     type: 'website',
+    images: [
+      {
+        url: '/og.png',
+        width: 1200,
+        height: 630,
+        alt: 'Wyandanch Library — Open Source Finance Education',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Wyandanch Library',
+    description:
+      'Free, open source finance education. 25 readings across 8 levels — from Menger to machine learning.',
+    images: ['/og.png'],
   },
   robots: { index: true, follow: true },
 };
