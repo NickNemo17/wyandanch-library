@@ -65,7 +65,7 @@ const svg = `<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg" x
   <text x="370" y="400" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="18" fill="#ffffff" font-weight="700">&gt;</text>
 
   <!-- Stats -->
-  <text x="600" y="460" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="12" fill="#555" letter-spacing="1">37 READINGS  |  8 LEVELS  |  4 TRACKS  |  FREE &amp; OPEN SOURCE</text>
+  <text x="600" y="460" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="12" fill="#555" letter-spacing="1">38 READINGS  |  8 LEVELS  |  4 TRACKS  |  FREE &amp; OPEN SOURCE</text>
 
   <!-- Brought to you -->
   <text x="600" y="510" text-anchor="middle" font-family="Consolas, Courier New, monospace" font-size="11" fill="#444" letter-spacing="1">WYANDANCH CAPITAL  &amp;  WYANDANCH CONSULTING</text>

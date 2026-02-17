@@ -14,6 +14,7 @@ const mdxMap: Record<string, () => Promise<MDXModule>> = {
   'graham-value-investing': () => import('@/content/level-2/graham-value-investing.mdx'),
   'engines-that-move-markets': () => import('@/content/level-2/engines-that-move-markets.mdx'),
   'lynch-one-up-on-wall-street': () => import('@/content/level-2/lynch-one-up-on-wall-street.mdx'),
+  'tudor-jones-principles': () => import('@/content/level-2/tudor-jones-principles.mdx'),
   'schwager-market-wizards': () => import('@/content/level-2/schwager-market-wizards.mdx'),
   'taleb-incerto': () => import('@/content/level-2/taleb-incerto.mdx'),
   'keynes-general-theory': () => import('@/content/level-3/keynes-general-theory.mdx'),

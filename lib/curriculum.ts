@@ -226,6 +226,17 @@ export const allItems: CurriculumItem[] = [
     keyConcepts: ['GARP', 'Tenbaggers', 'Stock categorization', 'Invest in what you know', 'The amateur edge', 'PEG ratio'],
   },
   {
+    slug: 'tudor-jones-principles',
+    title: 'Paul Tudor Jones: The Art of Macro Trading',
+    author: 'Paul Tudor Jones (via Schwager, interviews, "Trader" documentary)',
+    level: 2,
+    tracks: ['practitioner', 'macro'],
+    topics: ['the-canon', 'markets-and-execution', 'economics-and-macro'],
+    description:
+      'The greatest risk manager in macro trading history. Synthesized from the 1987 "Trader" documentary, Schwager\'s Market Wizards, and three decades of interviews: defense first, 200-day moving average, tape reading, asymmetric payoffs, and the 1987 crash trade.',
+    keyConcepts: ['Defense over offense', '200-day moving average', 'Asymmetric risk/reward', 'Tape reading', '1987 crash trade', 'Losers average losers'],
+  },
+  {
     slug: 'schwager-market-wizards',
     title: 'Market Wizards',
     author: 'Jack Schwager',

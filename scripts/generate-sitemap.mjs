@@ -8,7 +8,7 @@ const articles = [
   'buffett-shareholder-letters', 'fisher-common-stocks', 'marks-oaktree-memos',
   'livermore-reminiscences', 'druckenmiller-principles', 'graham-value-investing',
   'engines-that-move-markets', 'lynch-one-up-on-wall-street', 'schwager-market-wizards',
-  'taleb-incerto', 'keynes-general-theory', 'hayek-prices-and-production',
+  'tudor-jones-principles', 'taleb-incerto', 'keynes-general-theory', 'hayek-prices-and-production',
   'soros-reflexivity', 'behavioral-finance', 'damodaran-little-book-valuation',
   'growth-investing-principles', 'technical-analysis', 'quant-foundations',
   'econometrics-and-fx', 'garch-101', 'portfolio-construction',

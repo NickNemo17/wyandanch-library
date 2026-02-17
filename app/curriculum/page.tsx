@@ -5,10 +5,10 @@ import { ScrollReveal } from '@/components/ScrollReveal';
 
 export const metadata: Metadata = {
   title: 'Curriculum — Wyandanch Library',
-  description: '37 readings across 8 progressive levels. From economic foundations through investing philosophy, valuation, quantitative methods, and advanced topics in market microstructure and machine learning.',
+  description: '38 readings across 8 progressive levels. From economic foundations through investing philosophy, valuation, quantitative methods, and advanced topics in market microstructure and machine learning.',
   openGraph: {
     title: 'Curriculum — Wyandanch Library',
-    description: '37 readings across 8 progressive levels in investing and quantitative finance.',
+    description: '38 readings across 8 progressive levels in investing and quantitative finance.',
     url: 'https://wyandanchlibrary.com/curriculum',
     siteName: 'Wyandanch Library',
   },
