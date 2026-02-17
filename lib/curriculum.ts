@@ -44,7 +44,7 @@ export const tracks: Track[] = [
     title: 'The Fundamental Investor',
     subtitle: 'Value, quality, and business analysis',
     description:
-      'A path through the economic foundations, investing philosophy, and valuation frameworks that define fundamental equity analysis. Start with Menger and Stigler, absorb the wisdom of Buffett, Fisher, and Marks, then apply Damodaran\'s valuation toolkit.',
+      'A path through the economic foundations, investing philosophy, and valuation frameworks that define fundamental equity analysis. Start with Smith, Menger, and Stigler, absorb the wisdom of Buffett, Fisher, and Marks, then apply Damodaran\'s valuation toolkit.',
     icon: 'I',
   },
   {
@@ -68,7 +68,7 @@ export const tracks: Track[] = [
     title: 'The Macro Thinker',
     subtitle: 'Economics, monetary theory, and cycles',
     description:
-      'Keynes vs. Hayek, monetary theory, business cycles, and the economic foundations that shape every asset class. Understand the macro forces that move markets before you trade them.',
+      'Keynes vs. Hayek, Friedman\'s monetarism, business cycles, and the economic foundations that shape every asset class. Understand the macro forces that move markets before you trade them.',
     icon: 'IV',
   },
 ];
@@ -124,6 +124,17 @@ export const allItems: CurriculumItem[] = [
     description:
       'A rigorous treatment of price theory — supply, demand, costs, and market structure — from one of the Chicago School\'s finest minds.',
     keyConcepts: ['Price theory', 'Supply and demand', 'Cost curves', 'Market structure', 'Perfect competition'],
+  },
+  {
+    slug: 'smith-wealth-of-nations',
+    title: 'The Wealth of Nations',
+    author: 'Adam Smith (1776)',
+    level: 1,
+    tracks: ['fundamental', 'macro'],
+    topics: ['the-canon', 'economics-and-macro'],
+    description:
+      'The founding text of modern economics. Smith on the division of labor, the invisible hand, free trade, capital accumulation, and the self-regulating mechanisms of competitive markets.',
+    keyConcepts: ['Division of labor', 'Invisible hand', 'Free trade', 'Natural vs. market price', 'Capital accumulation', 'Critique of mercantilism'],
   },
   {
     slug: 'business-history-of-finance',
@@ -302,6 +313,17 @@ export const allItems: CurriculumItem[] = [
     description:
       'The psychological foundations of market behavior. Prospect theory, loss aversion, anchoring, overconfidence, and the systematic biases that create mispricings.',
     keyConcepts: ['Prospect theory', 'Loss aversion', 'Anchoring', 'Overconfidence', 'Disposition effect', 'Herd behavior'],
+  },
+  {
+    slug: 'friedman-monetary-theory',
+    title: 'Monetarism: Friedman & Schwartz',
+    author: 'Milton Friedman',
+    level: 3,
+    tracks: ['macro'],
+    topics: ['the-canon', 'economics-and-macro'],
+    description:
+      'The monetarist counter-revolution. Friedman\'s reinterpretation of the Great Depression, the natural rate of unemployment, the permanent income hypothesis, and the case for rules-based monetary policy.',
+    keyConcepts: ['Quantity theory of money', 'Natural rate of unemployment', 'Permanent income hypothesis', 'K-percent rule', 'Inflation expectations', 'Monetary contraction and the Great Depression'],
   },
   // Level 4 — Valuation
   {
@@ -534,7 +556,7 @@ export const levels: Level[] = [
   {
     number: 1,
     title: 'Economic Foundations',
-    description: 'First principles: value, price, and the history of finance',
+    description: 'First principles: Smith, Menger, Stigler, and the history of finance',
     items: allItems.filter((i) => i.level === 1),
   },
   {
@@ -546,7 +568,7 @@ export const levels: Level[] = [
   {
     number: 3,
     title: 'Macro & Monetary Theory',
-    description: 'Keynes, Hayek, Soros, and the psychology of markets',
+    description: 'Keynes, Hayek, Friedman, Soros, and the psychology of markets',
     items: allItems.filter((i) => i.level === 3),
   },
   {

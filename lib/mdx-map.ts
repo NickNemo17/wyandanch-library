@@ -5,6 +5,7 @@ type MDXModule = { default: ComponentType<any> };
 const mdxMap: Record<string, () => Promise<MDXModule>> = {
   'menger-principles-of-economics': () => import('@/content/level-1/menger-principles-of-economics.mdx'),
   'stigler-theory-of-price': () => import('@/content/level-1/stigler-theory-of-price.mdx'),
+  'smith-wealth-of-nations': () => import('@/content/level-1/smith-wealth-of-nations.mdx'),
   'business-history-of-finance': () => import('@/content/level-1/business-history-of-finance.mdx'),
   'buffett-shareholder-letters': () => import('@/content/level-2/buffett-shareholder-letters.mdx'),
   'fisher-common-stocks': () => import('@/content/level-2/fisher-common-stocks.mdx'),
@@ -21,6 +22,7 @@ const mdxMap: Record<string, () => Promise<MDXModule>> = {
   'hayek-prices-and-production': () => import('@/content/level-3/hayek-prices-and-production.mdx'),
   'soros-reflexivity': () => import('@/content/level-3/soros-reflexivity.mdx'),
   'behavioral-finance': () => import('@/content/level-3/behavioral-finance.mdx'),
+  'friedman-monetary-theory': () => import('@/content/level-3/friedman-monetary-theory.mdx'),
   'damodaran-little-book-valuation': () => import('@/content/level-4/damodaran-little-book-valuation.mdx'),
   'growth-investing-principles': () => import('@/content/level-4/growth-investing-principles.mdx'),
   'technical-analysis': () => import('@/content/level-4/technical-analysis.mdx'),
